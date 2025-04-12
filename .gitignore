@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+.venv/
+.env
+*.log
+.flake8
+temp/
+uploads/
