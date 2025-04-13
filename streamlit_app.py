@@ -1,12 +1,15 @@
 import streamlit as st
+st.set_page_config(page_title="Code Quality Reporter", page_icon="📊", layout="wide")
 import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import sys
 import base64
-
+from app.services.git_service import GitService
 # Добавляем директорию app в путь импорта
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "app")))
+
+
 
 # Импортируем наши сервисные классы
 from app.services.git_service import GitService
@@ -17,9 +20,9 @@ from app.services.git_service import GitService
 load_dotenv()
 
 # Настройка Streamlit
-st.set_page_config(page_title="Code Quality Reporter", page_icon="📊", layout="wide")
 
 
+use_llm = st.checkbox("🔮 Включить LLM-анализ commit-сообщений", value=True)
 # Инициализация сервисов
 @st.cache_resource
 def get_services():
@@ -132,6 +135,8 @@ else:
                     developer_username=selected_value,
                     start_date=start_date,
                     end_date=end_date,
+                    use_llm=use_llm # добавил чекбокс llm
+
                 )
 
                 if not commits:
@@ -141,6 +146,7 @@ else:
 
                     # Отображаем коммиты
                     for i, commit in enumerate(commits):
+
                         # Получаем первую строку сообщения коммита
                         message_first_line = (
                             commit["message"].splitlines()[0]
@@ -163,6 +169,9 @@ else:
                                     st.write(
                                         f"- {file['filename']} (+{file['additions']}/-{file['deletions']})"
                                     )
+                            if use_llm and "llm_summary" in commit:
+                                st.markdown(f"🤖 **LLM Summary:** {commit['llm_summary']}")
+
 
                     # Добавляем статистику
                     total_additions = sum(

@@ -4,7 +4,10 @@ from datetime import datetime
 from github import Github
 from typing import Union
 from datetime import timedelta
+from dotenv import load_dotenv
+from app.models.llm_service import ask_yandex_gpt
 
+load_dotenv()  # Загрузит токен из .env
 
 class GitService:
     def __init__(self):
@@ -254,56 +257,45 @@ class GitService:
         _, ext = os.path.splitext(filename)
         return ext.lower() in code_extensions
 
+
     def get_repository_commits(
-    self,
-    repo_name: str,
-    developer_username: str = None,
-    start_date = None,
-    end_date = None,
-    load_all_history: bool = False  # Новый параметр
-) -> List[Dict[str, Any]]:
+            self,
+            repo_name: str,
+            developer_username: str = None,
+            start_date=None,
+            end_date=None,
+            load_all_history: bool = False,
+            use_llm: bool = True  # 👈 добавили флаг
+    ) -> List[Dict[str, Any]]:
         """
-        Получает историю коммитов репозитория с возможностью фильтрации
-        Args:
-            repo_name: Имя репозитория
-            developer_username: Имя пользователя разработчика (если нужно фильтровать)
-            start_date: Начальная дата периода (None для всей истории, если load_all_history=True)
-            end_date: Конечная дата периода (None для текущей даты)
-            load_all_history: Если True, загружает всю историю коммитов (игнорирует start_date)
-        Returns:
-            Список словарей с информацией о коммитах
+        Получает историю коммитов репозитория с возможностью фильтрации и LLM-анализом.
         """
-        import datetime  # Импортируем здесь для избежания проблем с типами
-        
-        # Если нужна вся история, устанавливаем start_date в None
+        import datetime
+
         if load_all_history:
             start_date = None
             print("Запрошена полная история коммитов")
         else:
-            # Преобразование строковых дат в datetime
             if isinstance(start_date, str):
                 start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-            elif start_date is not None and isinstance(start_date, datetime.date) and not isinstance(start_date, datetime.datetime):
+            elif start_date and isinstance(start_date, datetime.date) and not isinstance(start_date, datetime.datetime):
                 start_date = datetime.datetime.combine(start_date, datetime.time.min)
-            
-            # Если начальная дата не указана и не запрошена вся история, используем дату месяц назад
+
             if start_date is None:
                 start_date = datetime.datetime.now() - datetime.timedelta(days=30)
-        
-        # Обработка конечной даты
+
         if isinstance(end_date, str):
             end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d")
-        elif end_date is not None and isinstance(end_date, datetime.date) and not isinstance(end_date, datetime.datetime):
+        elif end_date and isinstance(end_date, datetime.date) and not isinstance(end_date, datetime.datetime):
             end_date = datetime.datetime.combine(end_date, datetime.time.max)
-        
-        # Если конечная дата не указана, используем текущую
+
         if end_date is None:
             end_date = datetime.datetime.now()
-        
+
         print(f"Поиск коммитов в репозитории {repo_name}")
         if developer_username:
             print(f"Автор: {developer_username}")
-        
+
         if start_date:
             print(f"Период: с {start_date} по {end_date}")
         else:
@@ -311,16 +303,10 @@ class GitService:
 
         repo = self.github_client.get_repo(repo_name)
 
-        # Получаем все коммиты
         commits = []
         try:
-            # Используем author для фильтрации по имени разработчика
             author = developer_username if developer_username else None
-
-            # Получаем коммиты с фильтрацией по автору
-            all_commits = repo.get_commits(
-                author=author, since=start_date, until=end_date
-            )
+            all_commits = repo.get_commits(author=author, since=start_date, until=end_date)
 
             for commit in all_commits:
                 commit_data = {
@@ -337,8 +323,7 @@ class GitService:
                     },
                     "files": [],
                 }
-
-                # Добавляем информацию об измененных файлах
+                # Изменённые файлы
                 for file in commit.files:
                     file_data = {
                         "filename": file.filename,
@@ -349,8 +334,30 @@ class GitService:
                     }
                     if hasattr(file, "patch") and file.patch:
                         file_data["patch"] = file.patch
-
                     commit_data["files"].append(file_data)
+
+                # 🤖 Добавляем LLM-анализ, если включён
+                if use_llm:
+
+                    def extract_attr(file, key, default=""):
+                        if isinstance(file, dict):
+                            return file.get(key, default)
+                        return getattr(file, key, default)
+
+                    try:
+                        file_patches = "\n\n".join(
+                            f"--- {extract_attr(file, 'filename')} ---\n{extract_attr(file, 'patch')}"
+                            for file in commit_data["files"]
+                            if extract_attr(file, "patch")
+                        )
+
+
+                        prompt = f"""Проанализируй следующие изменения в коде (diff'ы),
+                         Укажи на потенциальные ошибки, соответствию best pracitce и выяви паттерны / анти-паттерны
+                         и кратко опиши, что произошло:\n\n{file_patches}"""
+                        commit_data["llm_summary"] = ask_yandex_gpt(prompt)
+                    except Exception as e:
+                        commit_data["llm_summary"] = f"[Ошибка LLM]: {e}"
 
                 commits.append(commit_data)
 
@@ -360,3 +367,4 @@ class GitService:
             print(f"Ошибка при получении коммитов: {e}")
 
         return commits
+
