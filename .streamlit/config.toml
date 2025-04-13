@@ -1,0 +1,7 @@
+[theme]
+base="light"
+primaryColor="#EF3124"  # Красный цвет Альфа Банка
+backgroundColor="#FFFFFF"  # Белый фон
+secondaryBackgroundColor="#F5F5F5"  # Светло-серый для блоков
+textColor="#333333"  # Темный текст для контраста
+font="sans serif"
