@@ -13,6 +13,8 @@ from app.services.git_service import GitService
 
 # Импортируем наши сервисные классы
 from app.services.git_service import GitService
+from app.services.full_quality_report import generate_full_quality_report
+
 # from app.services.code_analyzer import CodeAnalyzer
 # from app.services.report_service import ReportService
 
@@ -190,189 +192,30 @@ else:
                     col4.metric("Files Changed", total_files)
 
         else:
-            # Полный анализ качества кода
-            st.session_state.analysis_started = True
-
-            # Шаг 1: Получение MRs разработчика
-            with st.status("Fetching developer's merge requests...") as status:
-                mrs = git_service.get_developer_mrs(
-                    developer_username=selected_value,
+            # Новый путь: анализ всех коммитов и генерация финального отчета
+            with st.spinner("🔍 Analyzing full commit history..."):
+                commits = git_service.get_repository_commits(
                     repo_name=repo_name,
+                    developer_username=selected_value,
                     start_date=start_date,
                     end_date=end_date,
+                    use_llm=True,
+                    full_report=True  # 👈
+
                 )
-
-                if not mrs:
-                    status.update(label="No merge requests found", state="error")
-                    st.warning(
-                        "No merge requests found for the selected developer in the specified period"
-                    )
-                    st.session_state.analysis_started = False
+                if not commits:
+                    st.warning("No commits found for the selected developer and date range.")
                 else:
-                    status.update(
-                        label=f"Found {len(mrs)} merge requests", state="complete"
-                    )
-
-                    # Шаг 2: Анализ кода в каждом MR
-                    with st.status("Analyzing code quality...") as status:
-                        all_issues = []
-
-                        # Обработка каждого MR
-                        progress_bar = st.progress(0)
-                        for i, mr in enumerate(mrs):
-                            status.update(
-                                label=f"Analyzing MR #{mr['mr_id']}: {mr['title']}"
-                            )
-
-                            # Получаем изменения кода из MR
-                            code_changes = mr.get("code_changes", [])
-
-                            # Анализируем изменения кода
-                            if code_changes:
-                                mr_issues = code_analyzer.analyze_code_changes(
-                                    code_changes
-                                )
-
-                                # Добавляем ID MR к каждой проблеме
-                                for issue in mr_issues:
-                                    issue["mr_id"] = mr["mr_id"]
-
-                                all_issues.extend(mr_issues)
-
-                            # Обновляем прогресс
-                            progress_bar.progress((i + 1) / len(mrs))
-
-                        status.update(
-                            label=f"Analysis complete. Found {len(all_issues)} issues.",
-                            state="complete",
-                        )
-
-                    # Шаг 3: Формирование итогового отчета
-                    with st.status("Generating report...") as status:
-                        # Получаем общую оценку качества кода
-                        quality_summary = (
-                            code_analyzer.summarize_developer_code_quality(all_issues)
-                        )
-
-                        # Формируем отчет
-                        report = report_service.generate_developer_report(
-                            developer_info=selected_author_data,
-                            mrs_data=mrs,
-                            code_issues=all_issues,
-                            quality_summary=quality_summary,
-                            start_date=datetime.combine(
-                                start_date, datetime.min.time()
-                            ),
-                            end_date=datetime.combine(end_date, datetime.max.time()),
-                        )
-
-                        # Генерируем HTML-версию отчета
-                        html_report = report_service.generate_html_report(report)
-
-                        status.update(
-                            label="Report generated successfully", state="complete"
-                        )
-
-                    # Шаг 4: Отображение результатов
-                    st.subheader("Code Quality Analysis Results")
-
-                    # Основные метрики
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric(
-                            "Overall Quality Score", f"{quality_summary['score']}/100"
-                        )
-                    with col2:
-                        st.metric("Total Issues", len(all_issues))
-                    with col3:
-                        st.metric("Merge Requests Analyzed", len(mrs))
-
-                    # Подробный отчет
-                    with st.expander("Detailed Report", expanded=True):
-                        # Сильные стороны и области для улучшения
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.subheader("Strengths")
-                            for strength in quality_summary.get("strengths", []):
-                                st.markdown(f"- {strength}")
-
-                        with col2:
-                            st.subheader("Areas for Improvement")
-                            for area in quality_summary.get("improvement_areas", []):
-                                st.markdown(f"- {area}")
-
-                        # Общее резюме
-                        st.subheader("Summary")
-                        st.write(quality_summary.get("summary", ""))
-
-                        # Статистика по типам проблем
-                        st.subheader("Issue Statistics")
-
-                        # Создаем словарь для счетчиков
-                        severity_counts = quality_summary.get("issue_counts", {}).get(
-                            "by_severity", {}
-                        )
-                        category_counts = quality_summary.get("issue_counts", {}).get(
-                            "by_category", {}
-                        )
-
-                        # Отображаем счетчики
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write("By Severity:")
-                            for severity, count in severity_counts.items():
-                                st.write(f"- {severity.capitalize()}: {count}")
-
-                        with col2:
-                            st.write("By Category:")
-                            for category, count in category_counts.items():
-                                st.write(f"- {category.capitalize()}: {count}")
-
+                    report = generate_full_quality_report(commits)
+                    st.subheader("📋 Full Code Quality Report")
+                    st.code(report, language="markdown")
                     # Скачивание отчета
                     st.markdown(
                         get_download_link(
-                            html_report,
-                            f"code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.html",
-                            "Download Full HTML Report",
+                            report,
+                            f"full_code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.txt",
+                            "📥 Download Full Report",
                         ),
                         unsafe_allow_html=True,
                     )
 
-                    # Отображаем список MR с проблемами
-                    st.subheader("Merge Requests Analysis")
-                    for mr in mrs:
-                        mr_id = mr.get("mr_id")
-                        mr_issues = [
-                            issue for issue in all_issues if issue.get("mr_id") == mr_id
-                        ]
-
-                        with st.expander(
-                            f"MR #{mr_id}: {mr.get('title', '')} - {len(mr_issues)} issues"
-                        ):
-                            st.write(
-                                f"**URL:** [{mr.get('url', '')}]({mr.get('url', '')})"
-                            )
-                            st.write(f"**Created:** {mr.get('created_at', '')}")
-                            st.write(f"**Branch:** {mr.get('branch', '')}")
-                            st.write(
-                                f"**Changes:** +{mr.get('lines_added', 0)} -{mr.get('lines_removed', 0)} in {mr.get('files_changed', 0)} files"
-                            )
-
-                            if mr_issues:
-                                st.write("**Issues:**")
-                                for issue in mr_issues:
-                                    with st.expander(
-                                        f"{issue.get('description', 'Issue')} - {issue.get('severity', 'medium').capitalize()}"
-                                    ):
-                                        st.write(
-                                            f"**File:** {issue.get('file_path', '')}"
-                                        )
-                                        st.write(
-                                            f"**Location:** {issue.get('location', '')}"
-                                        )
-                                        st.write(
-                                            f"**Category:** {issue.get('category', 'other').capitalize()}"
-                                        )
-                                        st.write(
-                                            f"**Recommendation:** {issue.get('recommendation', '')}"
-                                        )
