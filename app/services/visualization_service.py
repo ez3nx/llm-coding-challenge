@@ -176,17 +176,6 @@ def create_enhanced_daily_activity_chart(df_commits):
         title="Daily Activity with Complexity",
     )
     
-    # Добавляем линию тренда
-    fig.add_trace(
-        go.Scatter(
-            x=daily_activity["date"],
-            y=daily_activity["commits"].rolling(window=7, min_periods=1).mean(),
-            mode="lines",
-            name="7-day Average",
-            line=dict(color="#333333", width=2, dash="dot"),
-        )
-    )
-    
     # Настраиваем макет
     fig.update_layout(
         xaxis_title="Date",
@@ -358,29 +347,6 @@ def create_enhanced_code_changes_chart(df_commits):
         row_heights=[0.4, 0.6]
     )
     
-    # 1. Ежедневные изменения (верхний график)
-    fig.add_trace(
-        go.Bar(
-            x=code_changes["date"],
-            y=code_changes["additions"],
-            name="Additions",
-            marker_color="#4CAF50",
-            hovertemplate="<b>%{x}</b><br>Additions: %{y}<extra></extra>"
-        ),
-        row=1, col=1
-    )
-    
-    fig.add_trace(
-        go.Bar(
-            x=code_changes["date"],
-            y=-code_changes["deletions"],  # Отрицательные значения для отображения вниз
-            name="Deletions",
-            marker_color=ALFA_RED,
-                        hovertemplate="<b>%{x}</b><br>Deletions: %{y}<extra></extra>"
-        ),
-        row=1, col=1
-    )
-    
     # 2. Кумулятивный рост (нижний график)
     fig.add_trace(
         go.Scatter(
@@ -502,10 +468,9 @@ def create_interactive_file_types_chart(commits):
     
     # Создаем интерактивную визуализацию
     fig = make_subplots(
-        rows=1, cols=2,
-        specs=[[{"type": "pie"}, {"type": "bar"}]],
-        column_widths=[0.4, 0.6],
-        subplot_titles=("File Types Distribution", "Changes by File Type")
+        rows=1, cols=1,
+        specs=[[{"type": "pie"}]],
+        subplot_titles=("File Types Distribution")
     )
     
     # Добавляем интерактивную круговую диаграмму
@@ -515,7 +480,7 @@ def create_interactive_file_types_chart(commits):
             values=ext_summary["count"],
             textinfo="percent+label",
             hole=0.5,
-            marker=dict(colors=ALFA_VIRIDIS_CUSTOM),
+            marker=dict(colors=ALFA_SEQUENTIAL),  # Изменить на ALFA_SEQUENTIAL вместо ALFA_VIRIDIS_CUSTOM
             hovertemplate="<b>%{label}</b><br>Files: %{value}<br>Percentage: %{percent}<extra></extra>",
             pull=[0.1 if i == 0 else 0 for i in range(len(ext_summary))],  # Выделяем первый сегмент
             domain=dict(x=[0, 0.48]),
@@ -524,56 +489,56 @@ def create_interactive_file_types_chart(commits):
     )
     
     # Добавляем интерактивную гистограмму с изменениями по типам файлов
-    fig.add_trace(
-        go.Bar(
-            x=ext_summary["extension"],
-            y=ext_summary["additions"],
-            name="Additions",
-            marker_color="#4CAF50",
-            hovertemplate="<b>%{x}</b><br>Additions: %{y}<extra></extra>"
-        ),
-        row=1, col=2
-    )
+    # fig.add_trace(
+    #     go.Bar(
+    #         x=ext_summary["extension"],
+    #         y=ext_summary["additions"],
+    #         name="Additions",
+    #         marker_color="#4CAF50",
+    #         hovertemplate="<b>%{x}</b><br>Additions: %{y}<extra></extra>"
+    #     ),
+    #     row=1, col=2
+    # )
     
-    fig.add_trace(
-        go.Bar(
-            x=ext_summary["extension"],
-            y=ext_summary["deletions"],
-            name="Deletions",
-            marker_color=ALFA_RED,
-            hovertemplate="<b>%{x}</b><br>Deletions: %{y}<extra></extra>"
-        ),
-        row=1, col=2
-    )
+    # fig.add_trace(
+    #     go.Bar(
+    #         x=ext_summary["extension"],
+    #         y=ext_summary["deletions"],
+    #         name="Deletions",
+    #         marker_color=ALFA_RED,
+    #         hovertemplate="<b>%{x}</b><br>Deletions: %{y}<extra></extra>"
+    #     ),
+    #     row=1, col=2
+    # )
     
     # Добавляем интерактивные элементы управления
-    updatemenus = [
-        dict(
-            type="buttons",
-            direction="right",
-            x=0.57,
-            y=1.2,
-            showactive=True,
-            buttons=[
-                dict(
-                    label="Stack",
-                    method="relayout",
-                    args=[{"barmode": "stack"}]
-                ),
-                dict(
-                    label="Group",
-                    method="relayout",
-                    args=[{"barmode": "group"}]
-                )
-            ]
-        )
-    ]
+    # updatemenus = [
+    #     dict(
+    #         type="buttons",
+    #         direction="right",
+    #         x=0.57,
+    #         y=1.2,
+    #         showactive=True,
+    #         buttons=[
+    #             dict(
+    #                 label="Stack",
+    #                 method="relayout",
+    #                 args=[{"barmode": "stack"}]
+    #             ),
+    #             dict(
+    #                 label="Group",
+    #                 method="relayout",
+    #                 args=[{"barmode": "group"}]
+    #             )
+    #         ]
+    #     )
+    # ]
     
     # Настраиваем макет
     fig.update_layout(
         title="File Types Analysis",
-        updatemenus=updatemenus,
-        barmode="stack",
+        # updatemenus=updatemenus,
+        # barmode="stack",
         annotations=[
             dict(
                 text="Bar Mode:",
@@ -600,20 +565,20 @@ def create_interactive_file_types_chart(commits):
     )
     
     # Настраиваем оси
-    fig.update_xaxes(
-        title_text="File Extension",
-        showgrid=False,
-        zeroline=False,
-        row=1, col=2
-    )
-    fig.update_yaxes(
-        title_text="Lines Changed",
-        showgrid=True,
-        gridwidth=1,
-        gridcolor=ALFA_LIGHT_GRAY,
-        zeroline=False,
-        row=1, col=2
-    )
+    # fig.update_xaxes(
+    #     title_text="File Extension",
+    #     showgrid=False,
+    #     zeroline=False,
+    #     row=1, col=2
+    # )
+    # fig.update_yaxes(
+    #     title_text="Lines Changed",
+    #     showgrid=True,
+    #     gridwidth=1,
+    #     gridcolor=ALFA_LIGHT_GRAY,
+    #     zeroline=False,
+    #     row=1, col=2
+    # )
     
     return fig
 
@@ -821,33 +786,6 @@ def create_code_pulse_visualization(df_commits):
         row=1, col=1
     )
     
-    # Добавляем график скорости изменений
-    fig.add_trace(
-        go.Bar(
-            x=pulse_data['datetime'],
-            y=pulse_data['change_velocity'],
-            name='Change Velocity',
-            marker=dict(
-                color=pulse_data['change_velocity'],
-                colorscale='Reds',
-                showscale=False,
-            ),
-            hovertemplate='Date: %{x}<br>Velocity: %{y:.1f} lines/commit<extra></extra>',
-        ),
-        row=2, col=1
-    )
-    
-    # Добавляем линию тренда скорости
-    fig.add_trace(
-        go.Scatter(
-            x=pulse_data['datetime'],
-            y=pulse_data['change_velocity'].rolling(window=10, min_periods=1).mean(),
-            mode='lines',
-            name='Velocity Trend',
-            line=dict(color='#333333', width=2, dash='dot'),
-        ),
-        row=2, col=1
-    )
     
     # Настраиваем макет
     fig.update_layout(
@@ -1083,34 +1021,34 @@ def display_commit_analytics(commits, author_data):
             weekly_chart = create_weekly_activity_chart(df_commits)
             st.plotly_chart(weekly_chart, use_container_width=True, config={"displayModeBar": True})
         
-        # Двумерная тепловая карта активности
-        st.markdown("### 🔥 Activity Heatmap")
-        if "hour" in df_commits.columns and "day_of_week" in df_commits.columns:
-            heatmap = create_activity_heatmap(df_commits)
-            st.plotly_chart(heatmap, use_container_width=True, config={"displayModeBar": True})
+        # # Двумерная тепловая карта активности
+        # st.markdown("### 🔥 Activity Heatmap")
+        # if "hour" in df_commits.columns and "day_of_week" in df_commits.columns:
+        #     heatmap = create_activity_heatmap(df_commits)
+        #     st.plotly_chart(heatmap, use_container_width=True, config={"displayModeBar": True})
             
-            st.markdown("""
-            <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-                    <div style="font-size: 1.2rem; margin-right: 10px;">💡</div>
-                    <div style="font-weight: 600; color: #333;">Pro Tip</div>
-                </div>
-                <p style="margin: 0; color: #666;">
-                    Hover over cells to see exact commit counts. The heatmap shows patterns of activity across different days and hours.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+        #     st.markdown("""
+        #     <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+        #         <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+        #             <div style="font-size: 1.2rem; margin-right: 10px;">💡</div>
+        #             <div style="font-weight: 600; color: #333;">Pro Tip</div>
+        #         </div>
+        #         <p style="margin: 0; color: #666;">
+        #             Hover over cells to see exact commit counts. The heatmap shows patterns of activity across different days and hours.
+        #         </p>
+        #     </div>
+        #     """, unsafe_allow_html=True)
     
     with viz_tabs[1]:
         # График изменений кода без анимации
-        st.markdown("### 📝 Code Changes Analysis")
-        changes_chart = create_enhanced_code_changes_chart(df_commits)
-        st.plotly_chart(changes_chart, use_container_width=True, config={"displayModeBar": True})
+        # st.markdown("### 📝 Code Changes Analysis")
+        # changes_chart = create_enhanced_code_changes_chart(df_commits)
+        # st.plotly_chart(changes_chart, use_container_width=True, config={"displayModeBar": True})
         
         # Добавляем визуализацию "пульса кода"
-        st.markdown("### ❤️ Code Pulse Visualization")
-        pulse_chart = create_code_pulse_visualization(df_commits)
-        st.plotly_chart(pulse_chart, use_container_width=True, config={"displayModeBar": True})
+        # st.markdown("### ❤️ Code Pulse Visualization")
+        # pulse_chart = create_code_pulse_visualization(df_commits)
+        # st.plotly_chart(pulse_chart, use_container_width=True, config={"displayModeBar": True})
         
         # Добавляем статистику по изменениям кода
         col1, col2 = st.columns(2)
@@ -1254,12 +1192,9 @@ def display_commit_analytics(commits, author_data):
     with viz_tabs[2]:
         # Анализ типов файлов с интерактивными элементами
         st.markdown("### 📂 File Types Distribution and Analysis")
-        
         if commits[0].get("files"):
             # Интерактивная визуализация типов файлов
             file_types_chart = create_interactive_file_types_chart(commits)
-            if file_types_chart:
-                st.plotly_chart(file_types_chart, use_container_width=True, config={"displayModeBar": True})
             
             # Собираем топ измененных файлов
             file_changes = {}
@@ -1272,22 +1207,13 @@ def display_commit_analytics(commits, author_data):
                             file_changes[filename] += changes
                         else:
                             file_changes[filename] = changes
-            
             # Сортируем и берем топ-15
             top_files = sorted(file_changes.items(), key=lambda x: x[1], reverse=True)[:15]
             
-            st.markdown("""
-            <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin: 1.5rem 0 1rem 0;">
-                <h4 style="margin-top: 0;">Most Changed Files</h4>
-                <p style="color: #666; margin-bottom: 0;">Files with the highest number of code changes</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Создаем интерактивную визуализацию топ файлов
+            # Создаем данные для горизонтальной диаграммы
             file_names = [os.path.basename(file) for file, _ in top_files]
             file_paths = [file for file, _ in top_files]
             file_changes_values = [changes for _, changes in top_files]
-            
             # Определяем типы файлов для цветовой схемы
             file_types = []
             for file in file_paths:
@@ -1303,151 +1229,47 @@ def display_commit_analytics(commits, author_data):
                 else:
                     file_types.append('Other')
             
-            # Создаем интерактивную горизонтальную гистограмму
-            fig = px.bar(
-                x=file_changes_values,
-                y=file_names,
-                color=file_types,
-                orientation='h',
-                labels={'x': 'Lines Changed', 'y': 'File'},
-                title='Top Changed Files',
-                color_discrete_sequence=ALFA_VIRIDIS_CUSTOM,
-                hover_data={'path': file_paths}
-            )
-            
-            # Настраиваем макет
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
-                height=500,
-                margin=dict(l=10, r=10, t=50, b=10),
-                yaxis={'categoryorder': 'total ascending'},
-                legend=dict(
-                    title='File Type',
-                    orientation='h',
-                    yanchor='bottom',
-                    y=1.02,
-                    xanchor='right',
-                    x=1
-                )
-            )
-            
-            # Настраиваем подсказки
-            fig.update_traces(
-                hovertemplate='<b>%{y}</b><br>Changes: %{x}<br>Path: %{customdata[0]}<br>Type: %{marker.color}<extra></extra>'
-            )
-            
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": True})
-            
-            # Добавляем интерактивный анализ расширений файлов
-            st.markdown("""
-            <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin: 1.5rem 0 1rem 0;">
-                <h4 style="margin-top: 0;">File Extensions Impact</h4>
-                <p style="color: #666; margin-bottom: 0;">Analysis of how different file types contribute to the codebase</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Собираем данные по расширениям
-            extension_data = {}
-            for commit in commits:
-                for file in commit["files"]:
-                    if isinstance(file, dict) and "filename" in file:
-                        _, ext = os.path.splitext(file["filename"])
-                        if ext:
-                            ext = ext.lower()
-                            additions = file.get("additions", 0)
-                            deletions = file.get("deletions", 0)
-                            
-                            if ext not in extension_data:
-                                extension_data[ext] = {
-                                    "additions": 0,
-                                    "deletions": 0,
-                                    "count": 0
-                                }
-                            
-                            extension_data[ext]["additions"] += additions
-                            extension_data[ext]["deletions"] += deletions
-                            extension_data[ext]["count"] += 1
-            
-            # Преобразуем в DataFrame
-            ext_df = pd.DataFrame([
-                {
-                    "extension": ext,
-                    "additions": data["additions"],
-                    "deletions": data["deletions"],
-                    "total_changes": data["additions"] + data["deletions"],
-                    "count": data["count"],
-                    "avg_change": (data["additions"] + data["deletions"]) / data["count"]
-                }
-                for ext, data in extension_data.items()
-            ])
-            
-            # Сортируем по общему количеству изменений
-            ext_df = ext_df.sort_values("total_changes", ascending=False).head(10)
-            
-            # Создаем интерактивную визуализацию
-            fig = px.sunburst(
-                ext_df,
-                path=['extension'],
-                values='total_changes',
-                color='avg_change',
-                color_continuous_scale='Reds',
-                hover_data=['additions', 'deletions', 'count', 'avg_change'],
-                title='File Extensions Impact Analysis',
-            )
-            
-            # Настраиваем макет
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
-                margin=dict(l=10, r=10, t=50, b=10),
-                coloraxis_colorbar=dict(
-                    title="Avg Changes",
-                )
-            )
-            
-            # Настраиваем подсказки
-            fig.update_traces(
-                hovertemplate='<b>%{label}</b><br>Total Changes: %{value}<br>Additions: %{customdata[0]}<br>Deletions: %{customdata[1]}<br>Files: %{customdata[2]}<br>Avg. Changes: %{customdata[3]:.1f}<extra></extra>'
-            )
-            
-            col1, col2 = st.columns([2, 1])
+            # Отображаем диаграммы в двух колонках
+            col1, col2 = st.columns(2)
             with col1:
-                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": True})
+                if file_types_chart:
+                    st.plotly_chart(file_types_chart, use_container_width=True, config={"displayModeBar": False})
             
             with col2:
-                # Добавляем интерактивную статистику по типам файлов
-                st.markdown("<h4>Extension Stats</h4>", unsafe_allow_html=True)
-                
-                # Создаем интерактивную таблицу
-                st.dataframe(
-                    ext_df,
-                    column_config={
-                        "extension": st.column_config.TextColumn("Extension"),
-                        "additions": st.column_config.NumberColumn("Added", format="%d"),
-                        "deletions": st.column_config.NumberColumn("Deleted", format="%d"),
-                        "total_changes": st.column_config.NumberColumn("Total", format="%d"),
-                        "count": st.column_config.NumberColumn("Files", format="%d"),
-                        "avg_change": st.column_config.NumberColumn("Avg. Change", format="%.1f"),
-                    },
-                    hide_index=True,
-                    use_container_width=True,
+                # Создаем интерактивную горизонтальную гистограмму
+                fig = px.bar(
+                    x=file_changes_values,
+                    y=file_names,
+                    color=file_types,
+                    orientation='h',
+                    labels={'x': 'Lines Changed', 'y': 'File'},
+                    title='Top Changed Files',
+                    color_discrete_sequence=ALFA_SEQUENTIAL,
+                    hover_data={'path': file_paths}
                 )
+                # Настраиваем макет с меньшей высотой
+                fig.update_layout(
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
+                    height=520,  # Увеличиваем высоту с 350 до 450
+                    margin=dict(l=10, r=10, t=50, b=10),
+                    yaxis={'categoryorder': 'total ascending'},
+                    legend=dict(
+                        title='File Type',
+                        orientation='h',
+                        yanchor='bottom',
+                        y=1.02,
+                        xanchor='right',
+                        x=1
+                    )
+                )
+                # Настраиваем подсказки
+                fig.update_traces(
+                    hovertemplate='<b>%{y}</b><br>Changes: %{x}<br>Path: %{customdata[0]}<br>Type: %{marker.color}<extra></extra>'
+                )
+                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
                 
-                # Добавляем советы по интерпретации
-                st.markdown("""
-                <div style="background-color: #F8F8F8; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem;">💡 Interpretation Tips</div>
-                    <ul style="margin: 0; padding-left: 1.2rem; color: #666;">
-                        <li>Larger segments represent more changes</li>
-                        <li>Darker color indicates higher average changes per file</li>
-                        <li>Click on segments to zoom in</li>
-                    </ul>
-                </div>
-                """, unsafe_allow_html=True)
-    
     with viz_tabs[3]:
         # Анализ влияния коммитов
         st.markdown("### 🔍 Commit Impact Analysis")
@@ -1647,14 +1469,15 @@ def display_commit_analytics(commits, author_data):
             legend=dict(
                 orientation='h',
                 yanchor='bottom',
-                y=-0.1,
+                y=-0.15,  # Смещаем легенду ниже
                 xanchor='center',
                 x=0.5
             ),
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
-            margin=dict(l=80, r=80, t=50, b=50),
+            margin=dict(l=80, r=80, t=50, b=80),  # Увеличиваем нижний отступ
+            height=550,  # Увеличиваем высоту еще больше
         )
         
         col1, col2 = st.columns([3, 2])
