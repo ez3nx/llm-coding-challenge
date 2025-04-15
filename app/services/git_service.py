@@ -5,7 +5,7 @@ from github import Github
 from typing import Union
 from datetime import timedelta
 from dotenv import load_dotenv
-from app.models.llm_service import ask_yandex_gpt
+from app.models.llm_service import ask_qwen
 from app.services.full_quality_report import generate_full_quality_report
 
 load_dotenv()  # Загрузит токен из .env
@@ -354,23 +354,38 @@ class GitService:
                         )
 
                         prompt = f"""
-                        Ты — помощник по анализу качества кода. Твоя задача — провести ревью на основе diff'ов и ответить по следующим пунктам:
+                        You are a senior code reviewer. Analyze the following code diff and provide your response in **Russian**.
+                        Respond in clear, structured **Markdown**, without any HTML tags like <div>.
+                        Please include the following:
 
-                        1. 📋 **Общее описание изменений** — кратко, что сделал разработчик.
-                        2. ✅ **Best practices** — соблюдены ли они? Если да, укажи какие.
-                        3. ⚠️ **Проблемы/уязвимости** — перечисли потенциальные баги, уязвимости или плохие практики.
-                        4. 🧠 **Качество кода** — оцени по шкале от 0 до 100:
-                           - Читаемость
-                           - Поддерживаемость
-                           - Архитектурная целостность
-                        5. 🧩 **Обнаруженные паттерны / антипаттерны** — дай названия и поясни, где они применены.
-                        6. 📊 **Сводка**:
-                           - Общая оценка качества: X/100
-                           - Категория риска: (критический / высокий / средний / низкий)
+                        1. 📋 **Summary of Changes**  
+                        Briefly describe what the developer changed.
 
-                        Вот изменения:\n\n{file_patches}"""
+                        2. ✅ **Best Practices**  
+                        List best practices applied in the code, if any.
 
-                        commit_data["llm_summary"] = ask_yandex_gpt(prompt)
+                        3. ⚠️ **Issues and Vulnerabilities**  
+                        Mention any potential bugs, risks, poor practices or security concerns.
+
+                        4. 🧠 **Code Quality Assessment**  
+                        Rate on a scale from 0 to 10:
+                        - Readability
+                        - Maintainability
+                        - Architectural design
+
+                        5. 🧩 **Detected Patterns / Anti-patterns**  
+                        Specify known patterns or anti-patterns used, and where exactly.
+
+                        6. 📊 **Overall Summary**  
+                        - Final quality score: X/10  
+                        - Risk level: (Critical / High / Medium / Low)
+
+                        ⚠️ Important: Respond in **Russian**.
+
+                        Here is the code diff:\n\n{file_patches}
+                        """
+
+                        commit_data["llm_summary"] = ask_qwen(prompt)
                     except Exception as e:
                         commit_data["llm_summary"] = f"[Ошибка LLM]: {e}"
 

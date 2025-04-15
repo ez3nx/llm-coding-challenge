@@ -1,23 +1,26 @@
+from app.models.llm_service import ask_yandex_gpt
+
 def generate_full_quality_report(commits: list) -> str:
     """
-    Собирает единый отчет по качеству кода на основе LLM-анализов всех коммитов.
+    Генерирует единый LLM-отчет на основе всех `llm_summary` из коммитов.
     """
     if not commits:
         return "Нет коммитов для анализа."
 
-    combined_summary = "📋 Full Code Quality Report\n\n"
-
+    summaries = []
     for commit in commits:
         sha = commit.get("sha", "???")
         author = commit.get("author", "Unknown")
         date = commit.get("date")
         summary = commit.get("llm_summary", "").strip()
 
-        combined_summary += (
-            f"🔹 Commit: {sha} ({date})\n"
-            f"👤 Author: {author}\n"
-            f"📝 Summary:\n{summary}\n\n"
-            + "-" * 40 + "\n\n"
-        )
+        if summary:
+            summaries.append(f"📦 Commit: {sha} — {author} — {date}\n{summary}")
 
-    return combined_summary
+    combined_prompt = (
+        "Ты — аналитик качества кода. Вот сводки по коммитам одного разработчика:\n\n"
+        + "\n\n".join(summaries)
+        + "\n\n📊 Сформируй единый вывод о его подходе к разработке, сильных/слабых сторонах и общем качестве кода."
+    )
+
+    return ask_yandex_gpt(combined_prompt)
