@@ -14,7 +14,7 @@ import sys
 import base64
 from app.services.git_service import GitService
 from app.services.visualization_service import display_commit_analytics
-from app.services.full_quality_report import generate_full_quality_report
+from app.services.full_quality_report import generate_full_quality_report, get_pdf_download_link
 
 # Загружаем переменные окружения
 load_dotenv()
@@ -323,13 +323,20 @@ else:
         """,
             unsafe_allow_html=True,
         )
-        st.code(report, language="markdown")
-        # Добавляем кнопку для скачивания отчета
+        
+        # Создаем контейнер с фиксированной шириной и прокруткой
+        container = st.container()
+        with container:
+            # Используем expander для возможности развернуть отчет на весь экран
+            with st.expander("View Full Report", expanded=True):
+                st.text_area("", report, height=500)
+        
+        # Добавляем кнопку для скачивания PDF
         st.markdown(
-            get_download_link(
+            get_pdf_download_link(
                 report,
-                f"code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.md",
-                "Download Full Report",
+                f"code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.pdf",
+                "Download as PDF",
             ),
             unsafe_allow_html=True,
         )
@@ -401,12 +408,13 @@ else:
                     unsafe_allow_html=True,
                 )
                 st.code(st.session_state.quality_report, language="markdown")
-                # Добавляем кнопку для скачивания отчета
+                
+                # Добавляем кнопку для скачивания PDF
                 st.markdown(
-                    get_download_link(
+                    get_pdf_download_link(
                         st.session_state.quality_report,
-                        f"code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.md",
-                        "Download Full Report",
+                        f"code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.pdf",
+                        "Download as PDF",
                     ),
                     unsafe_allow_html=True,
                 )
