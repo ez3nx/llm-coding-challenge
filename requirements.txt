@@ -1,0 +1,10 @@
+streamlit==1.44.1
+python-dotenv==1.1.0
+PyGithub==2.6.1
+pandas==2.2.3
+plotly==6.0.1
+numpy==2.0.2
+pdfkit==1.0.0
+weasyprint==65.1
+markdown2==2.4.9
+xhtml2pdf==0.2.17
