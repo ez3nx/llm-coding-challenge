@@ -9,7 +9,7 @@ YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 
-def ask_qwen(prompt: str, model="qwen/qwen-2.5-coder-32b-instruct", max_tokens=400, temperature=0.4):
+def ask_qwen(prompt: str, model="qwen/qwen-2.5-coder-32b-instruct", max_tokens=1200, temperature=0.3):
     headers = {
         "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
         "Content-Type": "application/json"

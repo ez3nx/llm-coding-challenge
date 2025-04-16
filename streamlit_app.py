@@ -308,65 +308,106 @@ else:
         unsafe_allow_html=True,
     )
 
+    def display_quality_report(commits, selected_value, start_date):
+        """Отображает полный отчет о качестве кода"""
+        report = generate_full_quality_report(commits)
+        
+        # Оформляем отчет
+        st.markdown(
+            """
+        <div style="background-color: #F5F5F5; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
+            <h2 style="display: flex; align-items: center; margin-top: 0;">
+                <span style="font-size: 1.5rem; margin-right: 0.5rem;">📋</span>
+                Full Code Quality Report
+            </h2>
+        """,
+            unsafe_allow_html=True,
+        )
+        st.code(report, language="markdown")
+        # Добавляем кнопку для скачивания отчета
+        st.markdown(
+            get_download_link(
+                report,
+                f"code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.md",
+                "Download Full Report",
+            ),
+            unsafe_allow_html=True,
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
     if st.button("Analyze", type="primary"):
-        if analysis_type == "Basic Commit Analysis":
-            # Базовый анализ коммитов с красивым индикатором загрузки
-            with st.spinner("🔍 Analyzing commits..."):
-                commits = git_service.get_repository_commits(
-                    repo_name=repo_name,
-                    developer_username=selected_value,
-                    start_date=start_date,
-                    end_date=end_date,
-                    use_llm=use_llm,
-                )
-
-                # Используем нашу функцию визуализации
+        # Общий блок для обоих типов анализа - получаем коммиты только один раз
+        with st.spinner("🔍 Analyzing commits..."):
+            # Если выбран полный отчет, всегда используем LLM
+            use_llm_for_analysis = True if analysis_type == "Full Code Quality Report" else use_llm
+            
+            commits = git_service.get_repository_commits(
+                repo_name=repo_name,
+                developer_username=selected_value,
+                start_date=start_date,
+                end_date=end_date,
+                use_llm=use_llm_for_analysis,
+            )
+            
+            # Сохраняем коммиты в session_state для возможного последующего использования
+            st.session_state.analyzed_commits = commits
+            st.session_state.analyzed_author = selected_author_data
+            st.session_state.analyzed_dates = (start_date, end_date)
+            st.session_state.analysis_displayed = True  # Добавляем флаг, что анализ был отображен
+            
+            if not commits:
+                st.warning("No commits found for the selected developer and date range.")
+            else:
+                # Отображаем визуализацию для обоих типов анализа
                 display_commit_analytics(commits, selected_author_data)
-        else:
-            # Полный анализ качества кода
-            with st.spinner("🧠 Generating comprehensive quality report..."):
-                commits = git_service.get_repository_commits(
-                    repo_name=repo_name,
-                    developer_username=selected_value,
-                    start_date=start_date,
-                    end_date=end_date,
-                    use_llm=True,
-                    full_report=True,
+                
+                # Если выбран полный отчет, сразу отображаем его
+                if analysis_type == "Full Code Quality Report":
+                    display_quality_report(commits, selected_value, start_date)
+    else:
+        # Если кнопка не была нажата, но у нас есть данные анализа, отображаем их снова
+        if hasattr(st.session_state, 'analyzed_commits') and st.session_state.analyzed_commits and hasattr(st.session_state, 'analysis_displayed') and st.session_state.analysis_displayed:
+            display_commit_analytics(st.session_state.analyzed_commits, st.session_state.analyzed_author)
+
+    # Проверяем, есть ли уже сгенерированный отчет
+    if 'quality_report_generated' not in st.session_state:
+        st.session_state.quality_report_generated = False
+
+    # Добавляем кнопку для генерации отчета после анализа коммитов
+    if hasattr(st.session_state, 'analyzed_commits') and st.session_state.analyzed_commits:
+        # Создаем контейнер для отчета
+        report_container = st.container()
+        
+        # Показываем кнопку только если отчет еще не сгенерирован и мы в режиме Basic Commit Analysis
+        if not st.session_state.quality_report_generated and ('analysis_type' in locals() and analysis_type == "Basic Commit Analysis"):
+            if st.button("📊 Generate Full Quality Report", type="secondary"):
+                with st.spinner("🧠 Generating comprehensive quality report..."):
+                    # Генерируем отчет
+                    report = generate_full_quality_report(st.session_state.analyzed_commits)
+                    st.session_state.quality_report = report
+                    st.session_state.quality_report_generated = True
+        
+        # Если отчет был сгенерирован, отображаем его
+        if hasattr(st.session_state, 'quality_report_generated') and st.session_state.quality_report_generated and hasattr(st.session_state, 'quality_report'):
+            with report_container:
+                st.markdown(
+                    """
+                <div style="background-color: #F5F5F5; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
+                    <h2 style="display: flex; align-items: center; margin-top: 0;">
+                        <span style="font-size: 1.5rem; margin-right: 0.5rem;">📋</span>
+                        Full Code Quality Report
+                    </h2>
+                """,
+                    unsafe_allow_html=True,
                 )
-
-                if not commits:
-                    st.warning(
-                        "No commits found for the selected developer and date range."
-                    )
-                else:
-                    # Показываем красивую визуализацию
-                    display_commit_analytics(commits, selected_author_data)
-
-                    # Генерируем полный отчет
-                    report = generate_full_quality_report(commits)
-
-                    # Оформляем отчет
-                    st.markdown(
-                        """
-                    <div style="background-color: #F5F5F5; padding: 1.5rem; border-radius: 8px; margin-top: 2rem;">
-                        <h2 style="display: flex; align-items: center; margin-top: 0;">
-                            <span style="font-size: 1.5rem; margin-right: 0.5rem;">📋</span>
-                            Full Code Quality Report
-                        </h2>
-                    """,
-                        unsafe_allow_html=True,
-                    )
-
-                    st.code(report, language="markdown")
-
-                    # Добавляем кнопку для скачивания отчета
-                    st.markdown(
-                        get_download_link(
-                            report,
-                            f"code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.md",
-                            "Download Full Report",
-                        ),
-                        unsafe_allow_html=True,
-                    )
-
-                    st.markdown("</div>", unsafe_allow_html=True)
+                st.code(st.session_state.quality_report, language="markdown")
+                # Добавляем кнопку для скачивания отчета
+                st.markdown(
+                    get_download_link(
+                        st.session_state.quality_report,
+                        f"code_quality_{selected_value}_{start_date.strftime('%Y%m%d')}.md",
+                        "Download Full Report",
+                    ),
+                    unsafe_allow_html=True,
+                )
+                st.markdown("</div>", unsafe_allow_html=True)

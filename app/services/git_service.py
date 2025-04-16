@@ -353,37 +353,69 @@ class GitService:
                             if extract_attr(file, "patch")
                         )
 
+                        # prompt = f"""
+                        # You are a senior code reviewer. Analyze the following code diff and provide your response in **Russian**.
+                        # Respond in clear, structured **Markdown**, without any HTML tags like <div>.
+                        # Please include the following:
+
+                        # 1. 📋 **Summary of Changes**  
+                        # Briefly describe what the developer changed.
+
+                        # 2. ✅ **Best Practices**  
+                        # List best practices applied in the code, if any.
+
+                        # 3. ⚠️ **Issues and Vulnerabilities**  
+                        # Mention any potential bugs, risks, poor practices or security concerns.
+
+                        # 4. 🧠 **Code Quality Assessment**  
+                        # Rate on a scale from 0 to 10:
+                        # - Readability
+                        # - Maintainability
+                        # - Architectural design
+
+                        # 5. 🧩 **Detected Patterns / Anti-patterns**  
+                        # Specify known patterns or anti-patterns used, and where exactly.
+
+                        # 6. 📊 **Overall Summary**  
+                        # - Final quality score: X/10  
+                        # - Risk level: (Critical / High / Medium / Low)
+
+                        # ⚠️ Important: Respond in **Russian**.
+
+                        # Here is the code diff:\n\n{file_patches}
+                        # """
                         prompt = f"""
-                        You are a senior code reviewer. Analyze the following code diff and provide your response in **Russian**.
-                        Respond in clear, structured **Markdown**, without any HTML tags like <div>.
-                        Please include the following:
+                            Ты опытный senior разработчик на Java, Python и PHP с большим опытом code review. 
+                            Проанализируй следующий diff кода и предоставь детальный анализ на русском языке.
 
-                        1. 📋 **Summary of Changes**  
-                        Briefly describe what the developer changed.
+                            Структурируй свой ответ в формате Markdown СТРОГО следующим образом:
+                            
+                            ### 📋 Краткое описание изменений 
+                            Опиши суть внесенных изменений (общее саммари, не более 3-4 предложений).
 
-                        2. ✅ **Best Practices**  
-                        List best practices applied in the code, if any.
+                            ### ✅ Best practice
+                            - Перечисли примененные хорошие практики программирования (соблюдение тех или иных принципов)
 
-                        3. ⚠️ **Issues and Vulnerabilities**  
-                        Mention any potential bugs, risks, poor practices or security concerns.
+                            ### ⚠️ Проблемы и уязвимости
+                            (ВАЖНО!)
+                            - Укажи ВСЕ потенциальные баги и ошибки в коде
+                            - Выдели проблемные моменты
+                            - Отметь нарушения принципов чистого кода и bad practices
 
-                        4. 🧠 **Code Quality Assessment**  
-                        Rate on a scale from 0 to 10:
-                        - Readability
-                        - Maintainability
-                        - Architectural design
+                            ### 🧩 Паттерны и антипаттерны
+                            - Укажи использованные паттерны проектирования на основе анализа изменений
+                            - Выдели антипаттерны и проблемные места
 
-                        5. 🧩 **Detected Patterns / Anti-patterns**  
-                        Specify known patterns or anti-patterns used, and where exactly.
+                            ### 📊 Итоговая оценка
+                            - Общий балл качества: X/10
 
-                        6. 📊 **Overall Summary**  
-                        - Final quality score: X/10  
-                        - Risk level: (Critical / High / Medium / Low)
+                            Важно: 
+                            1. Будь внимателен, оценивай код объективно, учитывая контекст и специфику языка программирования
 
-                        ⚠️ Important: Respond in **Russian**.
+                            diff для анализа кода:
 
-                        Here is the code diff:\n\n{file_patches}
-                        """
+                            {file_patches}
+                            """
 
                         commit_data["llm_summary"] = ask_qwen(prompt)
                     except Exception as e:

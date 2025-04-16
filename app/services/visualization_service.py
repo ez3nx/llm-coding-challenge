@@ -3,7 +3,6 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from collections import Counter
 from datetime import datetime, timedelta
 import streamlit as st
 import numpy as np
@@ -488,51 +487,6 @@ def create_interactive_file_types_chart(commits):
         row=1, col=1
     )
     
-    # Добавляем интерактивную гистограмму с изменениями по типам файлов
-    # fig.add_trace(
-    #     go.Bar(
-    #         x=ext_summary["extension"],
-    #         y=ext_summary["additions"],
-    #         name="Additions",
-    #         marker_color="#4CAF50",
-    #         hovertemplate="<b>%{x}</b><br>Additions: %{y}<extra></extra>"
-    #     ),
-    #     row=1, col=2
-    # )
-    
-    # fig.add_trace(
-    #     go.Bar(
-    #         x=ext_summary["extension"],
-    #         y=ext_summary["deletions"],
-    #         name="Deletions",
-    #         marker_color=ALFA_RED,
-    #         hovertemplate="<b>%{x}</b><br>Deletions: %{y}<extra></extra>"
-    #     ),
-    #     row=1, col=2
-    # )
-    
-    # Добавляем интерактивные элементы управления
-    # updatemenus = [
-    #     dict(
-    #         type="buttons",
-    #         direction="right",
-    #         x=0.57,
-    #         y=1.2,
-    #         showactive=True,
-    #         buttons=[
-    #             dict(
-    #                 label="Stack",
-    #                 method="relayout",
-    #                 args=[{"barmode": "stack"}]
-    #             ),
-    #             dict(
-    #                 label="Group",
-    #                 method="relayout",
-    #                 args=[{"barmode": "group"}]
-    #             )
-    #         ]
-    #     )
-    # ]
     
     # Настраиваем макет
     fig.update_layout(
@@ -564,21 +518,6 @@ def create_interactive_file_types_chart(commits):
         height=450,
     )
     
-    # Настраиваем оси
-    # fig.update_xaxes(
-    #     title_text="File Extension",
-    #     showgrid=False,
-    #     zeroline=False,
-    #     row=1, col=2
-    # )
-    # fig.update_yaxes(
-    #     title_text="Lines Changed",
-    #     showgrid=True,
-    #     gridwidth=1,
-    #     gridcolor=ALFA_LIGHT_GRAY,
-    #     zeroline=False,
-    #     row=1, col=2
-    # )
     
     return fig
 
@@ -1021,34 +960,9 @@ def display_commit_analytics(commits, author_data):
             weekly_chart = create_weekly_activity_chart(df_commits)
             st.plotly_chart(weekly_chart, use_container_width=True, config={"displayModeBar": True})
         
-        # # Двумерная тепловая карта активности
-        # st.markdown("### 🔥 Activity Heatmap")
-        # if "hour" in df_commits.columns and "day_of_week" in df_commits.columns:
-        #     heatmap = create_activity_heatmap(df_commits)
-        #     st.plotly_chart(heatmap, use_container_width=True, config={"displayModeBar": True})
-            
-        #     st.markdown("""
-        #     <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-        #         <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-        #             <div style="font-size: 1.2rem; margin-right: 10px;">💡</div>
-        #             <div style="font-weight: 600; color: #333;">Pro Tip</div>
-        #         </div>
-        #         <p style="margin: 0; color: #666;">
-        #             Hover over cells to see exact commit counts. The heatmap shows patterns of activity across different days and hours.
-        #         </p>
-        #     </div>
-        #     """, unsafe_allow_html=True)
+
     
     with viz_tabs[1]:
-        # График изменений кода без анимации
-        # st.markdown("### 📝 Code Changes Analysis")
-        # changes_chart = create_enhanced_code_changes_chart(df_commits)
-        # st.plotly_chart(changes_chart, use_container_width=True, config={"displayModeBar": True})
-        
-        # Добавляем визуализацию "пульса кода"
-        # st.markdown("### ❤️ Code Pulse Visualization")
-        # pulse_chart = create_code_pulse_visualization(df_commits)
-        # st.plotly_chart(pulse_chart, use_container_width=True, config={"displayModeBar": True})
         
         # Добавляем статистику по изменениям кода
         col1, col2 = st.columns(2)
@@ -1737,15 +1651,11 @@ def display_commit_analytics(commits, author_data):
         # Если есть LLM анализ, показываем его в экспандере с улучшенным форматированием
         if llm_summary:
             with st.expander("🤖 View AI Analysis"):
-                st.markdown(
-                    f"""
-                <div style="background-color: #F8F8F8; padding: 1rem; border-radius: 8px; margin-bottom: 0.5rem;">
-                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #333;">AI Code Analysis</div>
-                    <div style="color: #444; line-height: 1.5;">{llm_summary}</div>
-                </div>
-                """,
-                    unsafe_allow_html=True,
-                )
+                # Добавляем заголовок отдельно
+                st.markdown("## AI Code Analysis")
+                
+                # Отображаем анализ LLM как обычный Markdown
+                st.markdown(llm_summary)
         
         # Добавляем разделитель для лучшей читаемости
         if i < len(recent_commits) - 1:
