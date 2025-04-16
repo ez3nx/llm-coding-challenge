@@ -6,8 +6,6 @@ Code Quality Reporter – это AI-ассистент для анализа к�
 
 ![Скриншот приложения](./images/llm_coder2.png)
 
-![Скриншот приложения](./images/llm_coder1.png)
-
 
 ### Стек
 - Frontend: Streamlit
@@ -66,4 +64,4 @@ GITHUB_TOKEN=your_github_token_here
 streamlit run streamlit_app.py
 ```
 
-
+![Скриншот приложения](./images/llm_coder1.png)
