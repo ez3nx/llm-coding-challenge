@@ -1,6 +1,7 @@
 import json
 import os
 
+
 def load_review_criteria(json_path: str = None) -> dict:
     """
     Загружает JSON с критериями code review.
