@@ -8,3 +8,5 @@ pdfkit==1.0.0
 weasyprint==65.1
 markdown2==2.4.9
 xhtml2pdf==0.2.17
+#openai==0.27.0
+google-generativeai==0.5.2
