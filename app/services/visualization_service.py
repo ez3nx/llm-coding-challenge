@@ -19,21 +19,19 @@ ALFA_COLOR_SCALE = [ALFA_RED, "#FF6B61", "#FF9E8D", "#FFD1C9", "#FFE8E5"]
 ALFA_SEQUENTIAL = ["#EF3124", "#F25D52", "#F68A82", "#F9B6B1", "#FCE3E1"]
 ALFA_VIRIDIS_CUSTOM = ["#440154", "#414487", "#2A788E", "#22A884", "#7AD151", "#FDE725"]
 
-# Создаем расширенную цветовую палитру на основе ALFA_RED
 def generate_color_palette(base_color, num_colors=10):
     """Генерирует цветовую палитру на основе базового цвета"""
-    # Конвертируем RGB в HSV
+
     r, g, b = int(base_color[1:3], 16)/255, int(base_color[3:5], 16)/255, int(base_color[5:7], 16)/255
     h, s, v = colorsys.rgb_to_hsv(r, g, b)
     
     palette = []
     for i in range(num_colors):
-        # Меняем насыщенность и яркость, сохраняя оттенок
+
         new_s = max(0.2, s - (i * 0.08))
         new_v = min(0.95, v + (i * 0.05))
         new_r, new_g, new_b = colorsys.hsv_to_rgb(h, new_s, new_v)
-        
-        # Конвертируем обратно в HEX
+
         hex_color = f"#{int(new_r*255):02x}{int(new_g*255):02x}{int(new_b*255):02x}"
         palette.append(hex_color)
     
@@ -119,8 +117,7 @@ def prepare_commit_data(commits):
         )
     
     df = pd.DataFrame(commit_data)
-    
-    # Добавляем скользящие средние для трендов
+
     if len(df) > 1:
         df = df.sort_values('datetime')
         df['additions_ma7'] = df['additions'].rolling(window=7, min_periods=1).mean()
@@ -146,11 +143,9 @@ def create_enhanced_daily_activity_chart(df_commits):
         .rename(columns={"date": "commits"})
         .reset_index()
     )
-    
-    # Добавляем поле размера для визуализации
+
     daily_activity['bubble_size'] = np.sqrt(daily_activity['commits'] * 5) + 10
-    
-    # Создаем интерактивный график активности по дням
+
     fig = px.scatter(
         daily_activity,
         x="date",

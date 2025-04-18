@@ -10,9 +10,9 @@ from app.utils.criteria_loader import load_review_criteria
 
 
 
-from app.services.full_quality_report import generate_full_quality_report
+from app.services.full_quality_report import generate_full_quality_report, get_pdf_download_link
 
-load_dotenv()  # Загрузит токен из .env
+load_dotenv()
 
 class GitService:
     def __init__(self):
@@ -36,17 +36,16 @@ class GitService:
         Returns:
             Список словарей с информацией о MRs
         """
-        # Преобразование строковых дат в datetime
+
         if start_date and isinstance(start_date, str):
             start_date = datetime.strptime(start_date, "%Y-%m-%d")
 
         if end_date and isinstance(end_date, str):
             end_date = datetime.strptime(end_date, "%Y-%m-%d")
         else:
-            # Если конечная дата не указана, используем текущую
+
             end_date = datetime.now()
 
-        # Если начальная дата не указана, используем дату год назад
         if not start_date:
             start_date = end_date - timedelta(days=365)
 
@@ -55,29 +54,24 @@ class GitService:
 
         repo = self.github_client.get_repo(repo_name)
 
-        # Получаем все PR, включая merged и closed
         pull_requests = repo.get_pulls(state="all")
 
         developer_mrs = []
         for pr in pull_requests:
-            # Проверяем, создан ли PR указанным разработчиком
+
             if pr.user.login != developer_username:
                 continue
 
-            # Получаем дату для проверки (или created_at, или merged_at)
             pr_date = pr.merged_at if pr.merged_at else pr.created_at
 
-            # Пропускаем PR без даты (хотя такого быть не должно)
             if not pr_date:
                 continue
 
-            # Проверяем, попадает ли PR в указанный временной диапазон
             if (start_date and pr_date < start_date) or (
                 end_date and pr_date > end_date
             ):
                 continue
 
-            # Собираем данные о PR
             mr_data = {
                 "mr_id": str(pr.number),
                 "title": pr.title,
@@ -94,7 +88,6 @@ class GitService:
                 "commits": pr.commits,
             }
 
-            # Добавляем изменения кода, если PR не слишком большой
             if pr.changed_files <= 50:  # Ограничиваем для производительности
                 mr_data["code_changes"] = self._get_code_changes(pr)
             else:
@@ -119,17 +112,12 @@ class GitService:
         try:
             print(f"Получение списка авторов коммитов для репозитория {repo_name}")
 
-            # Получаем репозиторий
             repo = self.github_client.get_repo(repo_name)
 
-            # Словарь для отслеживания уникальных авторов
-            # Ключ - email, значение - информация об авторе
             authors_dict = {}
 
-            # Получаем все коммиты (может занять время для больших репозиториев)
             all_commits = repo.get_commits()
 
-            # Счетчик для отображения прогресса
             count = 0
 
             for commit in all_commits:
@@ -137,21 +125,18 @@ class GitService:
                 if count % 100 == 0:
                     print(f"Обработано {count} коммитов...")
 
-                # Получаем информацию об авторе коммита
                 author_name = commit.commit.author.name
                 author_email = commit.commit.author.email
 
-                # Если GitHub пользователь связан с коммитом
                 github_user = None
                 github_login = None
                 if commit.author:
                     github_user = commit.author
                     github_login = github_user.login
 
-                # Добавляем или обновляем информацию об авторе
                 key = (
                     author_email.lower()
-                )  # Используем email в нижнем регистре как ключ
+                )
 
                 if key not in authors_dict:
                     authors_dict[key] = {
@@ -163,10 +148,8 @@ class GitService:
                         "last_commit_date": commit.commit.author.date,
                     }
                 else:
-                    # Обновляем существующую запись
                     authors_dict[key]["commit_count"] += 1
 
-                    # Обновляем дату последнего коммита, если текущий коммит новее
                     if (
                         commit.commit.author.date
                         > authors_dict[key]["last_commit_date"]
@@ -175,7 +158,6 @@ class GitService:
                             "last_commit_date"
                         ] = commit.commit.author.date
 
-                    # Обновляем дату первого коммита, если текущий коммит старше
                     if (
                         commit.commit.author.date
                         < authors_dict[key]["first_commit_date"]
@@ -184,7 +166,6 @@ class GitService:
                             "first_commit_date"
                         ] = commit.commit.author.date
 
-                    # Если у нас нет GitHub логина, но он есть в текущем коммите
                     if not authors_dict[key]["github_login"] and github_login:
                         authors_dict[key]["github_login"] = github_login
 
@@ -342,7 +323,7 @@ class GitService:
                         file_data["patch"] = file.patch
                     commit_data["files"].append(file_data)
 
-                # 🤖 Добавляем LLM-анализ, если включён
+                # Добавляем LLM-анализа, если включён
                 if use_llm:
 
                     def extract_attr(file, key, default=""):
@@ -357,78 +338,11 @@ class GitService:
                             if extract_attr(file, "patch")
                         )
 
-                        # prompt = f"""
-                        # You are a senior code reviewer. Analyze the following code diff and provide your response in **Russian**.
-                        # Respond in clear, structured **Markdown**, without any HTML tags like <div>.
-                        # Please include the following:
-
-                        # 1. 📋 **Summary of Changes**  
-                        # Briefly describe what the developer changed.
-
-                        # 2. ✅ **Best Practices**  
-                        # List best practices applied in the code, if any.
-
-                        # 3. ⚠️ **Issues and Vulnerabilities**  
-                        # Mention any potential bugs, risks, poor practices or security concerns.
-
-                        # 4. 🧠 **Code Quality Assessment**  
-                        # Rate on a scale from 0 to 10:
-                        # - Readability
-                        # - Maintainability
-                        # - Architectural design
-
-                        # 5. 🧩 **Detected Patterns / Anti-patterns**  
-                        # Specify known patterns or anti-patterns used, and where exactly.
-
-                        # 6. 📊 **Overall Summary**  
-                        # - Final quality score: X/10  
-                        # - Risk level: (Critical / High / Medium / Low)
-
-                        # ⚠️ Important: Respond in **Russian**.
-
-                        # Here is the code diff:\n\n{file_patches}
-                        # """
                         criteria = load_review_criteria()
                         criteria_text = "Вот список критериев для оценки кода:\n\n"
                         for section in criteria.get("sections", []):
                             criteria_text += f"## {section['title']}\n{section['description']}\n\n"
-                        # prompt = f"""
-                        #     Ты опытный senior разработчик на Java, Python и PHP с большим опытом code review.
-                        #     Проанализируй следующий diff кода и предоставь детальный анализ на русском языке.
-                        #     НЕ упоминай мелкие замечания (например, отсутствие логирования или документации), если изменения не затрагивают их напрямую.
-                        #     НЕ анализируй код вне diff и не придумывай гипотетические ситуации.
-                        #     Вот список критериев, по которым нужно проводить анализ:
-                        #
-                        #     {criteria_text}
-                        #     Структурируй свой ответ в формате Markdown СТРОГО следующим образом:
-                        #
-                        #     ### 📋 Краткое описание изменений
-                        #     Опиши суть внесенных изменений (общее саммари, не более 3-4 предложений).
-                        #
-                        #
-                        #     ### ✅ Best practice
-                        #     - Перечисли примененные хорошие практики программирования (соблюдение тех или иных принципов)
-                        #
-                        #     ### ⚠️ Проблемы и уязвимости
-                        #     (ВАЖНО!)
-                        #     - Проведи сбалансированный анализ: укажи как положительные стороны, так и реальные потенциальные проблемы, избегая чрезмерной строгости.
-                        #     - Выдели проблемные моменты
-                        #     - Отметь нарушения принципов чистого кода и bad practices
-                        #
-                        #     ### 🧩 Паттерны и антипаттерны
-                        #     - Укажи использованные паттерны проектирования на основе анализа изменений
-                        #     - Выдели антипаттерны и проблемные места
-                        #
-                        #     ### 📊 Итоговая оценка
-                        #     - Общий балл качества: X/10
-                        #
-                        #     Важно:
-                        #     1. Будь внимателен, оценивай код объективно, учитывая контекст и специфику языка программирования
-                        #
-                        #     diff для анализа кода:
-                        #
-                        #     {file_patches}
-                        #     """
+
                         prompt = f"""
                         Ты — опытный senior-разработчик на Java, Python и PHP с большим опытом code review. 
                         Проанализируй следующий diff кода и предоставь объективный, сбалансированный анализ на русском языке.
@@ -451,7 +365,7 @@ class GitService:
                         ### ✅ Best practice
                         - Укажи, какие хорошие практики были соблюдены.
 
-                        ### ⚠️ Проблемы и уязвимости
+                        ### ⚠️ Уязвимости
                         - Перечисли только реальные проблемы и уязвимости.
                         - Не указывай надуманные или гипотетические замечания.
                         - Не оцени "отсутствие логирования" или "магические строки", если их нет в diff.
@@ -462,26 +376,25 @@ class GitService:
 
                         ### 📊 Итоговая оценка
                         - Объективно оцени качество изменений по шкале от 0 до 10.
+                        - Оценка 9-10 - отлично, 7-8 - хорошо
                         - Не снижай оценку, если изменения мелкие и не вносят новых проблем.
                             
                         diff для анализа кода:
                         {file_patches}
                         """
 
-
-                        #commit_data["llm_summary"] = ask_qwen(prompt)
                         raw_review = ask_qwen(prompt)
                         try:
                             revised_review = revise_code_review_with_gemini(diff=file_patches,
                                                                                 first_review=raw_review)
-                            # Добавляем оба результата, если хочешь сохранить сравнение
+
                             commit_data["llm_summary"] = revised_review
                             commit_data[
-                                "llm_summary_raw"] = raw_review  # (опционально — чтобы видеть, что было до правки)
+                                "llm_summary_raw"] = raw_review
 
                         except Exception as e:
                             print(f"[Ошибка ревизора Gemini]: {e}")
-                            # Если ревизия упала — сохраняем оригинал
+
                             commit_data["llm_summary"] = raw_review
 
                     except Exception as e:
@@ -494,6 +407,12 @@ class GitService:
             if full_report:
                 report = generate_full_quality_report(commits)
                 print(report)
+
+                pdf_link = get_pdf_download_link(
+                    markdown_content=report,
+                    filename=f"code_quality_{developer_username}.pdf",
+                    link_text="📥 Скачать Альфа-отчет"
+                )
 
         except Exception as e:
             print(f"Ошибка при получении коммитов: {e}")

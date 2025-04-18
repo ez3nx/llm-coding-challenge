@@ -1,15 +1,14 @@
 import os
 import requests
-#import openai
 from dotenv import load_dotenv
 import google.generativeai as genai
+from app.utils.criteria_loader import load_review_criteria
 
 load_dotenv()
 
 YANDEX_API_KEY = os.getenv("YANDEX_GPT_API_KEY")
 YANDEX_FOLDER_ID = os.getenv("YANDEX_FOLDER_ID")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-#openai.api_key = os.getenv("OPENAI_API_KEY")
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 
@@ -63,39 +62,30 @@ def ask_yandex_gpt(prompt: str, temperature=0.4, max_tokens=800):
         print(f"❌ Ошибка YandexGPT: {response.status_code} {response.text}")
         return "⚠️ Ошибка при обращении к YandexGPT"
 
-# def ask_openai(prompt: str, model="gpt-3.5-turbo", temperature=0.3, max_tokens=1200):
-#     try:
-#         response = openai.ChatCompletion.create(
-#             model=model,
-#             messages=[
-#                 {"role": "system", "content": "You are an experienced senior developer doing code review."},
-#                 {"role": "user", "content": prompt}
-#             ],
-#             temperature=temperature,
-#             max_tokens=max_tokens
-#         )
-#         return response.choices[0].message.content
-#     except Exception as e:
-#         print(f"❌ Ошибка OpenAI: {e}")
-#         return "⚠️ Ошибка при обращении к OpenAI"
 
 def ask_gemini(prompt: str):
-    model = genai.GenerativeModel("gemini-2.5-pro-exp-03-25")  # или gemini-pro
+    headers = {
+        "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+        "Content-Type": "application/json"
+    }
 
-    try:
-        response = model.generate_content(
-            [{"role": "user", "parts": [prompt]}],
-            generation_config={
-                "temperature": 0.4,
-                "max_output_tokens": 2048
-            }
-        )
-        return response.text
-    except Exception as e:
-        print(f"❌ Ошибка Gemini: {e}")
-        return "⚠️ Ошибка при обращении к Gemini"
+    payload = {
+        "model": "google/gemini-2.5-pro-exp-03-25:free",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": 3072
+    }
 
-def revise_code_review_with_gemini(diff: str, first_review: str, temperature=0.4, max_tokens=2048):
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    response = requests.post(url, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        print(f"❌ Ошибка OpenRouter: {response.status_code} {response.text}")
+        return "⚠️ Ошибка при обращении к OpenRouter"
+
+def revise_code_review_with_gemini(diff: str, first_review: str, temperature=0.3, max_tokens=3072):
     """
     Проверка и корректировка отчета AI по коду.
     Модель получает оригинальный diff и сгенерированный отчет, после чего:
@@ -104,29 +94,50 @@ def revise_code_review_with_gemini(diff: str, first_review: str, temperature=0.4
     - корректирует необоснованные замечания,
     - либо подтверждает корректность.
     """
+    criteria = load_review_criteria()
+    criteria_text = "Вот список критериев для оценки кода:\n\n"
+    for section in criteria.get("sections", []):
+        criteria_text += f"## {section['title']}\n{section['description']}\n\n"
     prompt = f"""
-Ты — опытный ревизор AI-кода.
+    Ты — опытный senior-разработчик. Твоя задача — перепроверить отчёт, сгенерированный другой моделью, по diff изменений кода.
 
-Тебе переданы два блока:
-1. Diff — изменения в коде.
-2. Отчет от другой модели, которая провела анализ этих изменений.
+    Вот как действовать:
 
-Твоя задача — ПЕРЕПРОВЕРИТЬ отчет:
-- Найди в отчете замечания, которые НЕ относятся к diff — и УДАЛИ их.
-- Если замечания справедливы, перепиши их, усилив аргументацию.
-- Не добавляй ничего нового — только ревизия существующего отчета.
-- В конце обязательно напиши:
-✅ Всё корректно — если всё совпадает  
-✏️ Исправлено — если ты внёс правки
+    1. 📌 Если в отчёте есть утверждения, которые не соответствуют **текущему diff** — удали их.
+    2. ✏️ Если замечания сформулированы неточно или недостаточно обоснованно — перепиши их с улучшением.
+    3. ✅ Если всё корректно и замечания справедливы — подтверди.
+    4. ❌ НИКОГДА не добавляй новых пунктов или комментариев — только работа с тем, что уже есть.
+    5. 💬 В конце обязательно напиши один из вариантов:
+       - `✅ Всё корректно` — если ничего менять не пришлось
+       - `✏️ Исправлено` — если ты внёс правки
 
-Вот Diff:
-{diff}
+    ---
 
----
+    🧩 Структура ответа — Markdown. Используй только следующую структуру:
 
-Вот Отчет от первой модели:
-{first_review}
+    ### 📋 Краткое описание изменений
+    (Оставь, перепиши или удали — в зависимости от отчёта)
 
----
-"""
+    ### ✅ Best practice
+    (Оставь, перепиши или удали)
+
+    ### ⚠️ Проблемы и уязвимости
+    (Оставь, перепиши или удали)
+
+    ### 🧩 Паттерны и антипаттерны
+    (Оставь, перепиши или удали)
+
+    ### 📊 Итоговая оценка
+    (Оставь, перепиши или удали)
+
+    ---
+
+    🎯 Diff:
+    {diff}
+
+    ---
+
+    📄 Отчёт от первой модели:
+    {first_review}
+    """
     return ask_gemini(prompt, temperature=temperature, max_tokens=max_tokens)
