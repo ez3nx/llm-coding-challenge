@@ -9,10 +9,13 @@ from app.models.llm_service import ask_qwen, revise_code_review_with_gemini
 from app.utils.criteria_loader import load_review_criteria
 
 
-
-from app.services.full_quality_report import generate_full_quality_report, get_pdf_download_link
+from app.services.full_quality_report import (
+    generate_full_quality_report,
+    get_pdf_download_link,
+)
 
 load_dotenv()
+
 
 class GitService:
     def __init__(self):
@@ -134,9 +137,7 @@ class GitService:
                     github_user = commit.author
                     github_login = github_user.login
 
-                key = (
-                    author_email.lower()
-                )
+                key = author_email.lower()
 
                 if key not in authors_dict:
                     authors_dict[key] = {
@@ -243,16 +244,15 @@ class GitService:
         _, ext = os.path.splitext(filename)
         return ext.lower() in code_extensions
 
-
     def get_repository_commits(
-            self,
-            repo_name: str,
-            developer_username: str = None,
-            start_date=None,
-            end_date=None,
-            load_all_history: bool = False,
-            use_llm: bool = True,  # 👈 добавили флаг
-            full_report: bool = False
+        self,
+        repo_name: str,
+        developer_username: str = None,
+        start_date=None,
+        end_date=None,
+        load_all_history: bool = False,
+        use_llm: bool = True,  # 👈 добавили флаг
+        full_report: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Получает историю коммитов репозитория с возможностью фильтрации и LLM-анализом.
@@ -265,7 +265,11 @@ class GitService:
         else:
             if isinstance(start_date, str):
                 start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-            elif start_date and isinstance(start_date, datetime.date) and not isinstance(start_date, datetime.datetime):
+            elif (
+                start_date
+                and isinstance(start_date, datetime.date)
+                and not isinstance(start_date, datetime.datetime)
+            ):
                 start_date = datetime.datetime.combine(start_date, datetime.time.min)
 
             if start_date is None:
@@ -273,7 +277,11 @@ class GitService:
 
         if isinstance(end_date, str):
             end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d")
-        elif end_date and isinstance(end_date, datetime.date) and not isinstance(end_date, datetime.datetime):
+        elif (
+            end_date
+            and isinstance(end_date, datetime.date)
+            and not isinstance(end_date, datetime.datetime)
+        ):
             end_date = datetime.datetime.combine(end_date, datetime.time.max)
 
         if end_date is None:
@@ -293,7 +301,9 @@ class GitService:
         commits = []
         try:
             author = developer_username if developer_username else None
-            all_commits = repo.get_commits(author=author, since=start_date, until=end_date)
+            all_commits = repo.get_commits(
+                author=author, since=start_date, until=end_date
+            )
 
             for commit in all_commits:
                 commit_data = {
@@ -341,7 +351,9 @@ class GitService:
                         criteria = load_review_criteria()
                         criteria_text = "Вот список критериев для оценки кода:\n\n"
                         for section in criteria.get("sections", []):
-                            criteria_text += f"## {section['title']}\n{section['description']}\n\n"
+                            criteria_text += (
+                                f"## {section['title']}\n{section['description']}\n\n"
+                            )
 
                         prompt = f"""
                         Ты — опытный senior-разработчик на Java, Python и PHP с большим опытом code review. 
@@ -385,12 +397,12 @@ class GitService:
 
                         raw_review = ask_qwen(prompt)
                         try:
-                            revised_review = revise_code_review_with_gemini(diff=file_patches,
-                                                                                first_review=raw_review)
+                            revised_review = revise_code_review_with_gemini(
+                                diff=file_patches, first_review=raw_review
+                            )
 
                             commit_data["llm_summary"] = revised_review
-                            commit_data[
-                                "llm_summary_raw"] = raw_review
+                            commit_data["llm_summary_raw"] = raw_review
 
                         except Exception as e:
                             print(f"[Ошибка ревизора Gemini]: {e}")
@@ -402,7 +414,6 @@ class GitService:
 
                 commits.append(commit_data)
 
-
             print(f"Найдено {len(commits)} коммитов")
             if full_report:
                 report = generate_full_quality_report(commits)
@@ -411,11 +422,10 @@ class GitService:
                 pdf_link = get_pdf_download_link(
                     markdown_content=report,
                     filename=f"code_quality_{developer_username}.pdf",
-                    link_text="📥 Скачать Альфа-отчет"
+                    link_text="📥 Скачать Альфа-отчет",
                 )
 
         except Exception as e:
             print(f"Ошибка при получении коммитов: {e}")
 
         return commits
-
