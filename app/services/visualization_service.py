@@ -19,12 +19,17 @@ ALFA_COLOR_SCALE = [ALFA_RED, "#FF6B61", "#FF9E8D", "#FFD1C9", "#FFE8E5"]
 ALFA_SEQUENTIAL = ["#EF3124", "#F25D52", "#F68A82", "#F9B6B1", "#FCE3E1"]
 ALFA_VIRIDIS_CUSTOM = ["#440154", "#414487", "#2A788E", "#22A884", "#7AD151", "#FDE725"]
 
+
 def generate_color_palette(base_color, num_colors=10):
     """Генерирует цветовую палитру на основе базового цвета"""
 
-    r, g, b = int(base_color[1:3], 16)/255, int(base_color[3:5], 16)/255, int(base_color[5:7], 16)/255
+    r, g, b = (
+        int(base_color[1:3], 16) / 255,
+        int(base_color[3:5], 16) / 255,
+        int(base_color[5:7], 16) / 255,
+    )
     h, s, v = colorsys.rgb_to_hsv(r, g, b)
-    
+
     palette = []
     for i in range(num_colors):
 
@@ -34,10 +39,12 @@ def generate_color_palette(base_color, num_colors=10):
 
         hex_color = f"#{int(new_r*255):02x}{int(new_g*255):02x}{int(new_b*255):02x}"
         palette.append(hex_color)
-    
+
     return palette
 
+
 ALFA_EXTENDED_PALETTE = generate_color_palette(ALFA_RED, 20)
+
 
 def prepare_commit_data(commits):
     """Преобразует данные коммитов в DataFrame для анализа с расширенными метриками"""
@@ -53,16 +60,16 @@ def prepare_commit_data(commits):
             if isinstance(commit["date"], datetime)
             else datetime.min.time()
         )
-        
+
         # Расчет дополнительных метрик
         additions = commit["stats"]["additions"]
         deletions = commit["stats"]["deletions"]
         files_changed = len(commit["files"])
         total_changes = additions + deletions
-        
+
         # Рассчитываем сложность изменений (соотношение изменений к файлам)
         complexity = total_changes / max(1, files_changed)
-        
+
         # Определяем тип коммита на основе соотношения добавлений/удалений
         if additions == 0 and deletions > 0:
             commit_type = "Removal"
@@ -74,12 +81,16 @@ def prepare_commit_data(commits):
             commit_type = "Major Removal"
         else:
             commit_type = "Modification"
-        
+
         commit_data.append(
             {
                 "date": commit_date,
                 "time": commit_time,
-                "datetime": commit["date"] if isinstance(commit["date"], datetime) else datetime.combine(commit_date, commit_time),
+                "datetime": (
+                    commit["date"]
+                    if isinstance(commit["date"], datetime)
+                    else datetime.combine(commit_date, commit_time)
+                ),
                 "additions": additions,
                 "deletions": deletions,
                 "files_changed": files_changed,
@@ -115,16 +126,17 @@ def prepare_commit_data(commits):
                 "llm_summary": commit.get("llm_summary", ""),
             }
         )
-    
+
     df = pd.DataFrame(commit_data)
 
     if len(df) > 1:
-        df = df.sort_values('datetime')
-        df['additions_ma7'] = df['additions'].rolling(window=7, min_periods=1).mean()
-        df['deletions_ma7'] = df['deletions'].rolling(window=7, min_periods=1).mean()
-        df['changes_ma7'] = df['total_changes'].rolling(window=7, min_periods=1).mean()
-    
+        df = df.sort_values("datetime")
+        df["additions_ma7"] = df["additions"].rolling(window=7, min_periods=1).mean()
+        df["deletions_ma7"] = df["deletions"].rolling(window=7, min_periods=1).mean()
+        df["changes_ma7"] = df["total_changes"].rolling(window=7, min_periods=1).mean()
+
     return df
+
 
 def create_enhanced_daily_activity_chart(df_commits):
     """Создает улучшенный график активности по дням без анимации"""
@@ -144,7 +156,7 @@ def create_enhanced_daily_activity_chart(df_commits):
         .reset_index()
     )
 
-    daily_activity['bubble_size'] = np.sqrt(daily_activity['commits'] * 5) + 10
+    daily_activity["bubble_size"] = np.sqrt(daily_activity["commits"] * 5) + 10
 
     fig = px.scatter(
         daily_activity,
@@ -160,16 +172,16 @@ def create_enhanced_daily_activity_chart(df_commits):
             "additions": True,
             "deletions": True,
             "files_changed": True,
-            "complexity": ":.2f"
+            "complexity": ":.2f",
         },
         labels={
-            "date": "Date", 
-            "commits": "Number of Commits", 
-            "complexity": "Avg. Complexity"
+            "date": "Date",
+            "commits": "Number of Commits",
+            "complexity": "Avg. Complexity",
         },
         title="Daily Activity with Complexity",
     )
-    
+
     # Настраиваем макет
     fig.update_layout(
         xaxis_title="Date",
@@ -181,17 +193,23 @@ def create_enhanced_daily_activity_chart(df_commits):
         font=dict(family="Arial, sans-serif", size=12, color=ALFA_BLACK),
         margin=dict(l=10, r=10, t=50, b=10),
     )
-    
+
     # Настраиваем оси
     fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-        rangeslider=dict(visible=True, thickness=0.05)  # Добавляем слайдер диапазона дат
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
+        rangeslider=dict(
+            visible=True, thickness=0.05
+        ),  # Добавляем слайдер диапазона дат
     )
     fig.update_yaxes(
         showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False
     )
-    
+
     return fig
+
 
 def create_weekly_activity_chart(df_commits):
     """Создает график активности по дням недели без детализации по типам коммитов"""
@@ -205,10 +223,12 @@ def create_weekly_activity_chart(df_commits):
         "Saturday",
         "Sunday",
     ]
-    
+
     # Группируем по дню недели без детализации по типам коммитов
-    day_of_week_counts = df_commits["day_of_week"].value_counts().reindex(days_order).fillna(0)
-    
+    day_of_week_counts = (
+        df_commits["day_of_week"].value_counts().reindex(days_order).fillna(0)
+    )
+
     # Создаем график с цветами в стиле Альфа
     fig = px.bar(
         x=day_of_week_counts.index,
@@ -218,12 +238,10 @@ def create_weekly_activity_chart(df_commits):
         color=day_of_week_counts.values,
         color_continuous_scale=ALFA_SEQUENTIAL,
     )
-    
+
     # Настраиваем формат подсказок
-    fig.update_traces(
-        hovertemplate="<b>%{x}</b><br>Commits: %{y}<extra></extra>"
-    )
-    
+    fig.update_traces(hovertemplate="<b>%{x}</b><br>Commits: %{y}<extra></extra>")
+
     # Настраиваем макет
     fig.update_layout(
         plot_bgcolor="rgba(0,0,0,0)",
@@ -232,14 +250,15 @@ def create_weekly_activity_chart(df_commits):
         coloraxis_showscale=False,
         margin=dict(l=10, r=10, t=50, b=10),
     )
-    
+
     # Настраиваем оси
     fig.update_xaxes(showgrid=False, zeroline=False)
     fig.update_yaxes(
         showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False
     )
-    
+
     return fig
+
 
 def create_activity_heatmap(df_commits):
     """Создает двумерную тепловую карту активности"""
@@ -252,14 +271,14 @@ def create_activity_heatmap(df_commits):
         "Saturday",
         "Sunday",
     ]
-    
+
     # Создаем сводную таблицу: дни недели vs часы
     heatmap_data = pd.crosstab(df_commits["day_of_week"], df_commits["hour"])
-    
+
     # Переупорядочиваем строки, чтобы дни недели шли в правильном порядке
     if set(days_order).issubset(set(heatmap_data.index)):
         heatmap_data = heatmap_data.reindex(days_order)
-    
+
     # Создаем улучшенную тепловую карту с кастомными цветами
     fig = px.imshow(
         heatmap_data,
@@ -268,9 +287,9 @@ def create_activity_heatmap(df_commits):
         y=heatmap_data.index,
         color_continuous_scale=ALFA_SEQUENTIAL,
         title="Activity Heatmap",
-        aspect="auto"  # Для лучшего соотношения сторон
+        aspect="auto",  # Для лучшего соотношения сторон
     )
-    
+
     # Добавляем текст значений в ячейки для лучшей читаемости
     for i, day in enumerate(heatmap_data.index):
         for j, hour in enumerate(heatmap_data.columns):
@@ -282,11 +301,13 @@ def create_activity_heatmap(df_commits):
                     text=str(value),
                     showarrow=False,
                     font=dict(
-                        color="white" if value > 3 else "black",  # Адаптивный цвет текста
-                        size=9
-                    )
+                        color=(
+                            "white" if value > 3 else "black"
+                        ),  # Адаптивный цвет текста
+                        size=9,
+                    ),
                 )
-    
+
     # Настраиваем макет
     fig.update_layout(
         xaxis=dict(
@@ -305,42 +326,50 @@ def create_activity_heatmap(df_commits):
         margin=dict(l=10, r=10, t=50, b=10),
         coloraxis_colorbar=dict(
             title="Commits",
-            thicknessmode="pixels", thickness=20,
-            lenmode="pixels", len=300,
-            yanchor="top", y=1,
-            xanchor="right", x=1.02,
+            thicknessmode="pixels",
+            thickness=20,
+            lenmode="pixels",
+            len=300,
+            yanchor="top",
+            y=1,
+            xanchor="right",
+            x=1.02,
         ),
     )
-    
+
     return fig
+
 
 def create_enhanced_code_changes_chart(df_commits):
     """Создает улучшенный график изменений кода по времени без анимации"""
     # Создаем фрейм данных с накопленными изменениями по дням
     code_changes = (
         df_commits.groupby("date")
-        .agg({
-            "additions": "sum", 
-            "deletions": "sum",
-            "files_changed": "sum",
-            "complexity": "mean"
-        })
+        .agg(
+            {
+                "additions": "sum",
+                "deletions": "sum",
+                "files_changed": "sum",
+                "complexity": "mean",
+            }
+        )
         .reset_index()
     )
-    
+
     # Добавляем кумулятивные суммы
-    code_changes['cumulative_additions'] = code_changes['additions'].cumsum()
-    code_changes['cumulative_deletions'] = code_changes['deletions'].cumsum()
-    
+    code_changes["cumulative_additions"] = code_changes["additions"].cumsum()
+    code_changes["cumulative_deletions"] = code_changes["deletions"].cumsum()
+
     # Создаем subplot с двумя графиками
     fig = make_subplots(
-        rows=2, cols=1,
+        rows=2,
+        cols=1,
         subplot_titles=("Daily Code Changes", "Cumulative Code Growth"),
         shared_xaxes=True,
         vertical_spacing=0.1,
-        row_heights=[0.4, 0.6]
+        row_heights=[0.4, 0.6],
     )
-    
+
     # 2. Кумулятивный рост (нижний график)
     fig.add_trace(
         go.Scatter(
@@ -350,11 +379,12 @@ def create_enhanced_code_changes_chart(df_commits):
             line=dict(color="#4CAF50", width=2),
             fill="tozeroy",
             fillcolor="rgba(76, 175, 80, 0.2)",
-            hovertemplate="<b>%{x}</b><br>Total Additions: %{y}<extra></extra>"
+            hovertemplate="<b>%{x}</b><br>Total Additions: %{y}<extra></extra>",
         ),
-        row=2, col=1
+        row=2,
+        col=1,
     )
-    
+
     fig.add_trace(
         go.Scatter(
             x=code_changes["date"],
@@ -362,24 +392,27 @@ def create_enhanced_code_changes_chart(df_commits):
             name="Cumulative Deletions",
             line=dict(color=ALFA_RED, width=2),
             fill="tozeroy",
-            fillcolor=f'rgba({int(ALFA_RED[1:3], 16)}, {int(ALFA_RED[3:5], 16)}, {int(ALFA_RED[5:7], 16)}, 0.2)',
-            hovertemplate="<b>%{x}</b><br>Total Deletions: %{y}<extra></extra>"
+            fillcolor=f"rgba({int(ALFA_RED[1:3], 16)}, {int(ALFA_RED[3:5], 16)}, {int(ALFA_RED[5:7], 16)}, 0.2)",
+            hovertemplate="<b>%{x}</b><br>Total Deletions: %{y}<extra></extra>",
         ),
-        row=2, col=1
+        row=2,
+        col=1,
     )
-    
+
     # Добавляем линию чистого изменения
     fig.add_trace(
         go.Scatter(
             x=code_changes["date"],
-            y=code_changes["cumulative_additions"] - code_changes["cumulative_deletions"],
+            y=code_changes["cumulative_additions"]
+            - code_changes["cumulative_deletions"],
             name="Net Code Growth",
             line=dict(color="#2196F3", width=3),
-            hovertemplate="<b>%{x}</b><br>Net Code: %{y}<extra></extra>"
+            hovertemplate="<b>%{x}</b><br>Net Code: %{y}<extra></extra>",
         ),
-        row=2, col=1
+        row=2,
+        col=1,
     )
-    
+
     # Настраиваем макет
     fig.update_layout(
         title="Code Changes Analysis",
@@ -392,32 +425,49 @@ def create_enhanced_code_changes_chart(df_commits):
         margin=dict(l=10, r=10, t=80, b=10),
         height=600,
     )
-    
+
     # Настраиваем оси
     fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
         rangeslider=dict(visible=True, thickness=0.05),
-        row=2, col=1
+        row=2,
+        col=1,
     )
-    
+
     fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-        row=1, col=1
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
+        row=1,
+        col=1,
     )
-    
+
     fig.update_yaxes(
         title_text="Lines Changed",
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-        row=1, col=1
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
+        row=1,
+        col=1,
     )
-    
+
     fig.update_yaxes(
         title_text="Cumulative Lines",
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-        row=2, col=1
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
+        row=2,
+        col=1,
     )
-    
+
     return fig
+
 
 def create_interactive_file_types_chart(commits):
     """Создает интерактивную визуализацию типов файлов"""
@@ -432,41 +482,54 @@ def create_interactive_file_types_chart(commits):
                     additions = file.get("additions", 0)
                     deletions = file.get("deletions", 0)
                     changes = additions + deletions
-                    commit_date = commit["date"].date() if isinstance(commit["date"], datetime) else commit["date"]
-                    
-                    file_data.append({
-                        "extension": ext,
-                        "filename": file["filename"],
-                        "additions": additions,
-                        "deletions": deletions,
-                        "changes": changes,
-                        "date": commit_date
-                    })
-    
+                    commit_date = (
+                        commit["date"].date()
+                        if isinstance(commit["date"], datetime)
+                        else commit["date"]
+                    )
+
+                    file_data.append(
+                        {
+                            "extension": ext,
+                            "filename": file["filename"],
+                            "additions": additions,
+                            "deletions": deletions,
+                            "changes": changes,
+                            "date": commit_date,
+                        }
+                    )
+
     if not file_data:
         return None
-        
+
     # Создаем DataFrame
     df_files = pd.DataFrame(file_data)
-    
+
     # Группируем по расширению
-    ext_summary = df_files.groupby("extension").agg({
-        "changes": "sum",
-        "additions": "sum",
-        "deletions": "sum",
-        "filename": "count"
-    }).reset_index()
-    
+    ext_summary = (
+        df_files.groupby("extension")
+        .agg(
+            {
+                "changes": "sum",
+                "additions": "sum",
+                "deletions": "sum",
+                "filename": "count",
+            }
+        )
+        .reset_index()
+    )
+
     ext_summary = ext_summary.rename(columns={"filename": "count"})
     ext_summary = ext_summary.sort_values("changes", ascending=False).head(15)
-    
+
     # Создаем интерактивную визуализацию
     fig = make_subplots(
-        rows=1, cols=1,
+        rows=1,
+        cols=1,
         specs=[[{"type": "pie"}]],
-        subplot_titles=("File Types Distribution")
+        subplot_titles=("File Types Distribution"),
     )
-    
+
     # Добавляем интерактивную круговую диаграмму
     fig.add_trace(
         go.Pie(
@@ -474,15 +537,19 @@ def create_interactive_file_types_chart(commits):
             values=ext_summary["count"],
             textinfo="percent+label",
             hole=0.5,
-            marker=dict(colors=ALFA_SEQUENTIAL),  # Изменить на ALFA_SEQUENTIAL вместо ALFA_VIRIDIS_CUSTOM
+            marker=dict(
+                colors=ALFA_SEQUENTIAL
+            ),  # Изменить на ALFA_SEQUENTIAL вместо ALFA_VIRIDIS_CUSTOM
             hovertemplate="<b>%{label}</b><br>Files: %{value}<br>Percentage: %{percent}<extra></extra>",
-            pull=[0.1 if i == 0 else 0 for i in range(len(ext_summary))],  # Выделяем первый сегмент
+            pull=[
+                0.1 if i == 0 else 0 for i in range(len(ext_summary))
+            ],  # Выделяем первый сегмент
             domain=dict(x=[0, 0.48]),
         ),
-        row=1, col=1
+        row=1,
+        col=1,
     )
-    
-    
+
     # Настраиваем макет
     fig.update_layout(
         title="File Types Analysis",
@@ -496,34 +563,30 @@ def create_interactive_file_types_chart(commits):
                 y=1.2,
                 xref="paper",
                 yref="paper",
-                font=dict(size=14)
+                font=dict(size=14),
             )
         ],
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1
-        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Arial, sans-serif", size=12, color=ALFA_BLACK),
         margin=dict(l=10, r=10, t=100, b=10),
         height=450,
     )
-    
-    
+
     return fig
+
 
 def create_enhanced_commits_calendar(df_commits):
     """Создает улучшенный календарь коммитов без анимации"""
     # Подготавливаем данные для календаря
     calendar_data = df_commits.groupby("date").size().reset_index(name="count")
-    
+
     # Добавляем информацию о дне недели для лучшей визуализации
-    calendar_data["day_of_week"] = pd.to_datetime(calendar_data["date"]).dt.strftime("%A")
-    
+    calendar_data["day_of_week"] = pd.to_datetime(calendar_data["date"]).dt.strftime(
+        "%A"
+    )
+
     # Создаем улучшенный календарь
     fig = px.scatter(
         calendar_data,
@@ -534,16 +597,21 @@ def create_enhanced_commits_calendar(df_commits):
         color_continuous_scale=ALFA_SEQUENTIAL,
         size_max=25,
         hover_name="date",
-        hover_data={
-            "count": True,
-            "day_of_week": True
-        },
+        hover_data={"count": True, "day_of_week": True},
         title="Commit Calendar",
         category_orders={
-            "day_of_week": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            "day_of_week": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+            ]
         },
     )
-    
+
     # Настраиваем макет
     fig.update_layout(
         xaxis_title="Date",
@@ -556,23 +624,26 @@ def create_enhanced_commits_calendar(df_commits):
         margin=dict(l=10, r=10, t=50, b=10),
         coloraxis_showscale=False,  # Скрываем шкалу цветов
     )
-    
+
     # Настраиваем подсказки
     fig.update_traces(
         hovertemplate="<b>%{hovertext}</b><br>Day: %{y}<br>Commits: %{marker.size}<extra></extra>"
     )
-    
+
     return fig
+
 
 def create_commit_impact_chart(df_commits):
     """Создает интерактивный график влияния коммитов без анимации"""
     # Вычисляем метрики влияния для каждого коммита
     impact_data = df_commits.copy()
-    impact_data["impact"] = impact_data["total_changes"] * impact_data["complexity"] / 10
-    
+    impact_data["impact"] = (
+        impact_data["total_changes"] * impact_data["complexity"] / 10
+    )
+
     # Сортируем по дате
     impact_data = impact_data.sort_values("datetime")
-    
+
     # Создаем график с пузырьками, где размер отражает влияние
     fig = px.scatter(
         impact_data,
@@ -590,15 +661,15 @@ def create_commit_impact_chart(df_commits):
             "impact": False,  # Скрываем в подсказке, так как это производное значение
         },
         labels={
-            "datetime": "Date & Time", 
-            "total_changes": "Lines Changed", 
+            "datetime": "Date & Time",
+            "total_changes": "Lines Changed",
             "commit_type": "Commit Type",
         },
         title="Commit Impact Analysis",
         size_max=40,
         color_discrete_sequence=ALFA_EXTENDED_PALETTE,
     )
-    
+
     # Добавляем линию тренда
     fig.add_trace(
         go.Scatter(
@@ -609,7 +680,7 @@ def create_commit_impact_chart(df_commits):
             line=dict(color="#333333", width=2, dash="dot"),
         )
     )
-    
+
     # Настраиваем макет
     fig.update_layout(
         xaxis_title="Date & Time",
@@ -621,150 +692,188 @@ def create_commit_impact_chart(df_commits):
         font=dict(family="Arial, sans-serif", size=12, color=ALFA_BLACK),
         margin=dict(l=10, r=10, t=50, b=10),
     )
-    
+
     # Настраиваем оси
     fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
     )
     fig.update_yaxes(
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
     )
-    
+
     return fig
+
 
 def create_code_pulse_visualization(df_commits):
     """Создает визуализацию 'пульса кода' без анимации"""
     # Подготавливаем данные для визуализации
-    pulse_data = df_commits.sort_values('datetime').copy()
-    
+    pulse_data = df_commits.sort_values("datetime").copy()
+
     # Добавляем кумулятивные метрики
-    pulse_data['cumulative_additions'] = pulse_data['additions'].cumsum()
-    pulse_data['cumulative_deletions'] = pulse_data['deletions'].cumsum()
-    pulse_data['net_changes'] = pulse_data['cumulative_additions'] - pulse_data['cumulative_deletions']
-    
+    pulse_data["cumulative_additions"] = pulse_data["additions"].cumsum()
+    pulse_data["cumulative_deletions"] = pulse_data["deletions"].cumsum()
+    pulse_data["net_changes"] = (
+        pulse_data["cumulative_additions"] - pulse_data["cumulative_deletions"]
+    )
+
     # Рассчитываем скорость изменений (первая производная)
-    pulse_data['change_velocity'] = pulse_data['total_changes'].rolling(window=5, min_periods=1).mean()
-    
+    pulse_data["change_velocity"] = (
+        pulse_data["total_changes"].rolling(window=5, min_periods=1).mean()
+    )
+
     # Создаем subplot с несколькими графиками
     fig = make_subplots(
-        rows=2, cols=1,
+        rows=2,
+        cols=1,
         subplot_titles=("Code Growth Over Time", "Change Velocity"),
         shared_xaxes=True,
         vertical_spacing=0.1,
-        row_heights=[0.7, 0.3]
+        row_heights=[0.7, 0.3],
     )
-    
+
     # Добавляем линию кумулятивных добавлений
     fig.add_trace(
         go.Scatter(
-            x=pulse_data['datetime'],
-            y=pulse_data['cumulative_additions'],
-            mode='lines',
-            name='Cumulative Additions',
-            line=dict(color='#4CAF50', width=2),
-            fill='tozeroy',
-            fillcolor='rgba(76, 175, 80, 0.2)',
+            x=pulse_data["datetime"],
+            y=pulse_data["cumulative_additions"],
+            mode="lines",
+            name="Cumulative Additions",
+            line=dict(color="#4CAF50", width=2),
+            fill="tozeroy",
+            fillcolor="rgba(76, 175, 80, 0.2)",
         ),
-        row=1, col=1
+        row=1,
+        col=1,
     )
-    
+
     # Добавляем линию кумулятивных удалений
     fig.add_trace(
         go.Scatter(
-            x=pulse_data['datetime'],
-            y=pulse_data['cumulative_deletions'],
-            mode='lines',
-            name='Cumulative Deletions',
+            x=pulse_data["datetime"],
+            y=pulse_data["cumulative_deletions"],
+            mode="lines",
+            name="Cumulative Deletions",
             line=dict(color=ALFA_RED, width=2),
-            fill='tozeroy',
-            fillcolor=f'rgba({int(ALFA_RED[1:3], 16)}, {int(ALFA_RED[3:5], 16)}, {int(ALFA_RED[5:7], 16)}, 0.2)',
+            fill="tozeroy",
+            fillcolor=f"rgba({int(ALFA_RED[1:3], 16)}, {int(ALFA_RED[3:5], 16)}, {int(ALFA_RED[5:7], 16)}, 0.2)",
         ),
-        row=1, col=1
+        row=1,
+        col=1,
     )
-    
+
     # Добавляем линию чистого изменения
     fig.add_trace(
         go.Scatter(
-            x=pulse_data['datetime'],
-            y=pulse_data['net_changes'],
-            mode='lines',
-            name='Net Code Growth',
-            line=dict(color='#2196F3', width=3),
+            x=pulse_data["datetime"],
+            y=pulse_data["net_changes"],
+            mode="lines",
+            name="Net Code Growth",
+            line=dict(color="#2196F3", width=3),
         ),
-        row=1, col=1
+        row=1,
+        col=1,
     )
-    
+
     # Добавляем маркеры фактических коммитов
     fig.add_trace(
         go.Scatter(
-            x=pulse_data['datetime'],
-            y=pulse_data['net_changes'],
-            mode='markers',
-            name='Commits',
+            x=pulse_data["datetime"],
+            y=pulse_data["net_changes"],
+            mode="markers",
+            name="Commits",
             marker=dict(
-                color=pulse_data['commit_type'].map({
-                    "Addition": "#4CAF50",
-                    "Major Addition": "#2E7D32",
-                    "Modification": "#FF9800",
-                    "Removal": "#F44336",
-                    "Major Removal": "#B71C1C"                }),
-                size=pulse_data['total_changes'] / pulse_data['total_changes'].max() * 15 + 5,
-                symbol='circle',
-                line=dict(width=1, color='#333333'),
+                color=pulse_data["commit_type"].map(
+                    {
+                        "Addition": "#4CAF50",
+                        "Major Addition": "#2E7D32",
+                        "Modification": "#FF9800",
+                        "Removal": "#F44336",
+                        "Major Removal": "#B71C1C",
+                    }
+                ),
+                size=pulse_data["total_changes"]
+                / pulse_data["total_changes"].max()
+                * 15
+                + 5,
+                symbol="circle",
+                line=dict(width=1, color="#333333"),
             ),
-            hovertemplate='<b>%{text}</b><br>Date: %{x}<br>Net Code: %{y}<br>Changes: %{customdata[0]}<extra></extra>',
-            text=pulse_data['message'],
-            customdata=pulse_data[['total_changes', 'sha']],
+            hovertemplate="<b>%{text}</b><br>Date: %{x}<br>Net Code: %{y}<br>Changes: %{customdata[0]}<extra></extra>",
+            text=pulse_data["message"],
+            customdata=pulse_data[["total_changes", "sha"]],
             showlegend=False,
         ),
-        row=1, col=1
+        row=1,
+        col=1,
     )
-    
-    
+
     # Настраиваем макет
     fig.update_layout(
-        title='Code Pulse Visualization',
-        hovermode='closest',
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
+        title="Code Pulse Visualization",
+        hovermode="closest",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Arial, sans-serif", size=12, color=ALFA_BLACK),
         margin=dict(l=10, r=10, t=80, b=10),
         height=600,
     )
-    
+
     # Настраиваем оси
     fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
         rangeslider=dict(visible=True, thickness=0.05),
-        row=2, col=1
+        row=2,
+        col=1,
     )
-    
+
     fig.update_xaxes(
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-        row=1, col=1
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
+        row=1,
+        col=1,
     )
-    
+
     fig.update_yaxes(
-        title_text='Lines of Code',
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-        row=1, col=1
+        title_text="Lines of Code",
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
+        row=1,
+        col=1,
     )
-    
+
     fig.update_yaxes(
-        title_text='Lines/Commit',
-        showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-        row=2, col=1
+        title_text="Lines/Commit",
+        showgrid=True,
+        gridwidth=1,
+        gridcolor=ALFA_LIGHT_GRAY,
+        zeroline=False,
+        row=2,
+        col=1,
     )
-    
+
     return fig
+
 
 def display_commit_analytics(commits, author_data):
     """Отображает аналитику коммитов в Streamlit с улучшенной визуализацией без анимации"""
     if not commits:
         st.info("No commits found for the selected period")
         return
-    
+
     # Применяем стилизацию к Streamlit
     st.markdown(
         """
@@ -843,7 +952,7 @@ def display_commit_analytics(commits, author_data):
     """,
         unsafe_allow_html=True,
     )
-    
+
     # Создаем красивый заголовок с иконкой и метриками
     st.markdown(
         f"""
@@ -862,14 +971,14 @@ def display_commit_analytics(commits, author_data):
     """,
         unsafe_allow_html=True,
     )
-    
+
     # Преобразуем данные в DataFrame
     df_commits = prepare_commit_data(commits)
-    
+
     # Отображаем ключевые метрики в красивых карточках
     st.markdown('<div style="margin-bottom: 1.5rem;">', unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
         st.markdown(
             f"""
@@ -884,7 +993,7 @@ def display_commit_analytics(commits, author_data):
         """,
             unsafe_allow_html=True,
         )
-    
+
     with col2:
         total_additions = df_commits["additions"].sum()
         st.markdown(
@@ -900,7 +1009,7 @@ def display_commit_analytics(commits, author_data):
         """,
             unsafe_allow_html=True,
         )
-    
+
     with col3:
         total_deletions = df_commits["deletions"].sum()
         st.markdown(
@@ -916,7 +1025,7 @@ def display_commit_analytics(commits, author_data):
         """,
             unsafe_allow_html=True,
         )
-    
+
     with col4:
         total_files = df_commits["files_changed"].sum()
         st.markdown(
@@ -932,72 +1041,99 @@ def display_commit_analytics(commits, author_data):
         """,
             unsafe_allow_html=True,
         )
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-    
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
     # Добавляем компактный улучшенный календарь коммитов вверху
     calendar = create_enhanced_commits_calendar(df_commits)
-    st.plotly_chart(calendar, use_container_width=True, config={"displayModeBar": False})
-    
+    st.plotly_chart(
+        calendar, use_container_width=True, config={"displayModeBar": False}
+    )
+
     # Добавляем стилизованные вкладки для разных категорий графиков
-    viz_tabs = st.tabs(["📈 Activity", "🔄 Code Changes", "📁 File Analysis", "🔍 Impact Analysis", "📊 Advanced Metrics"])
-    
+    viz_tabs = st.tabs(
+        [
+            "📈 Activity",
+            "🔄 Code Changes",
+            "📁 File Analysis",
+            "🔍 Impact Analysis",
+            "📊 Advanced Metrics",
+        ]
+    )
+
     with viz_tabs[0]:
         # Графики активности без анимации
         st.markdown("### 📊 Developer Activity Patterns")
-        
+
         col1, col2 = st.columns(2)
         with col1:
             daily_chart = create_enhanced_daily_activity_chart(df_commits)
-            st.plotly_chart(daily_chart, use_container_width=True, config={"displayModeBar": True})
-        
+            st.plotly_chart(
+                daily_chart, use_container_width=True, config={"displayModeBar": True}
+            )
+
         with col2:
             weekly_chart = create_weekly_activity_chart(df_commits)
-            st.plotly_chart(weekly_chart, use_container_width=True, config={"displayModeBar": True})
-        
+            st.plotly_chart(
+                weekly_chart, use_container_width=True, config={"displayModeBar": True}
+            )
 
-    
     with viz_tabs[1]:
-        
+
         # Добавляем статистику по изменениям кода
         col1, col2 = st.columns(2)
         with col1:
             # Вычисляем статистику по неделям с интерактивным форматированием
-            df_commits["week"] = pd.to_datetime(df_commits["date"]).dt.isocalendar().week
+            df_commits["week"] = (
+                pd.to_datetime(df_commits["date"]).dt.isocalendar().week
+            )
             weekly_stats = (
                 df_commits.groupby("week")
-                .agg({
-                    "additions": "sum", 
-                    "deletions": "sum", 
-                    "files_changed": "sum",
-                    "total_changes": "sum",
-                    "complexity": "mean"
-                })
+                .agg(
+                    {
+                        "additions": "sum",
+                        "deletions": "sum",
+                        "files_changed": "sum",
+                        "total_changes": "sum",
+                        "complexity": "mean",
+                    }
+                )
                 .reset_index()
             )
-            
+
             # Добавляем столбец эффективности
-            weekly_stats["efficiency"] = (weekly_stats["additions"] / weekly_stats["total_changes"] * 100).round(1)
-            
-            st.markdown("""
+            weekly_stats["efficiency"] = (
+                weekly_stats["additions"] / weekly_stats["total_changes"] * 100
+            ).round(1)
+
+            st.markdown(
+                """
             <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                 <h4 style="margin-top: 0;">Weekly Code Change Statistics</h4>
                 <p style="color: #666; margin-bottom: 0;">Breakdown of code changes by week with efficiency metrics</p>
             </div>
-            """, unsafe_allow_html=True)
-            
+            """,
+                unsafe_allow_html=True,
+            )
+
             # Создаем интерактивную таблицу
             st.dataframe(
                 weekly_stats,
                 column_config={
                     "week": st.column_config.NumberColumn("Week", format="%d"),
                     "additions": st.column_config.NumberColumn("Added", format="%d"),
-                                        "deletions": st.column_config.NumberColumn("Deleted", format="%d"),
-                    "files_changed": st.column_config.NumberColumn("Files", format="%d"),
-                    "total_changes": st.column_config.NumberColumn("Total", format="%d"),
-                    "complexity": st.column_config.NumberColumn("Complexity", format="%.2f"),
+                    "deletions": st.column_config.NumberColumn("Deleted", format="%d"),
+                    "files_changed": st.column_config.NumberColumn(
+                        "Files", format="%d"
+                    ),
+                    "total_changes": st.column_config.NumberColumn(
+                        "Total", format="%d"
+                    ),
+                    "complexity": st.column_config.NumberColumn(
+                        "Complexity", format="%.2f"
+                    ),
                     "efficiency": st.column_config.ProgressColumn(
-                        "Efficiency", 
+                        "Efficiency",
                         format="%d%%",
                         min_value=0,
                         max_value=100,
@@ -1006,20 +1142,23 @@ def display_commit_analytics(commits, author_data):
                 hide_index=True,
                 use_container_width=True,
             )
-        
+
         with col2:
             # Вычисляем соотношение добавленных/удаленных строк с улучшенным индикатором
             if total_additions + total_deletions > 0:
                 add_ratio = total_additions / (total_additions + total_deletions) * 100
                 del_ratio = 100 - add_ratio
-                
-                st.markdown("""
+
+                st.markdown(
+                    """
                 <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <h4 style="margin-top: 0;">Code Change Ratio</h4>
                     <p style="color: #666; margin-bottom: 0;">Balance between code additions and deletions</p>
                 </div>
-                """, unsafe_allow_html=True)
-                
+                """,
+                    unsafe_allow_html=True,
+                )
+
                 st.markdown(
                     f"""
                 <div style="display: flex; height: 40px; width: 100%; background-color: #F5F5F5; border-radius: 5px; overflow: hidden; margin-top: 10px; position: relative;">
@@ -1037,20 +1176,23 @@ def display_commit_analytics(commits, author_data):
                 """,
                     unsafe_allow_html=True,
                 )
-                
+
                 # Средний размер коммита с визуальным индикатором
                 avg_changes = (total_additions + total_deletions) / len(commits)
                 avg_files = total_files / len(commits)
-                
+
                 st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-                
-                st.markdown("""
+
+                st.markdown(
+                    """
                 <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <h4 style="margin-top: 0;">Commit Size Metrics</h4>
                     <p style="color: #666; margin-bottom: 0;">Average size and complexity of commits</p>
                 </div>
-                """, unsafe_allow_html=True)
-                
+                """,
+                    unsafe_allow_html=True,
+                )
+
                 col1, col2 = st.columns(2)
                 with col1:
                     # Определяем размер коммита
@@ -1062,7 +1204,7 @@ def display_commit_analytics(commits, author_data):
                     elif avg_changes < 200:
                         size_category = "Medium"
                         size_color = "#FF9800"
-                    
+
                     st.markdown(
                         f"""
                     <div style="background-color: #F8F8F8; padding: 1rem; border-radius: 8px; text-align: center;">
@@ -1074,7 +1216,7 @@ def display_commit_analytics(commits, author_data):
                     """,
                         unsafe_allow_html=True,
                     )
-                
+
                 with col2:
                     # Определяем сложность коммита по количеству файлов
                     complexity_category = "High"
@@ -1085,7 +1227,7 @@ def display_commit_analytics(commits, author_data):
                     elif avg_files < 5:
                         complexity_category = "Medium"
                         complexity_color = "#FF9800"
-                    
+
                     st.markdown(
                         f"""
                     <div style="background-color: #F8F8F8; padding: 1rem; border-radius: 8px; text-align: center;">
@@ -1097,14 +1239,14 @@ def display_commit_analytics(commits, author_data):
                     """,
                         unsafe_allow_html=True,
                     )
-    
+
     with viz_tabs[2]:
         # Анализ типов файлов с интерактивными элементами
         st.markdown("### 📂 File Types Distribution and Analysis")
         if commits[0].get("files"):
             # Интерактивная визуализация типов файлов
             file_types_chart = create_interactive_file_types_chart(commits)
-            
+
             # Собираем топ измененных файлов
             file_changes = {}
             for commit in commits:
@@ -1117,8 +1259,10 @@ def display_commit_analytics(commits, author_data):
                         else:
                             file_changes[filename] = changes
             # Сортируем и берем топ-15
-            top_files = sorted(file_changes.items(), key=lambda x: x[1], reverse=True)[:15]
-            
+            top_files = sorted(file_changes.items(), key=lambda x: x[1], reverse=True)[
+                :15
+            ]
+
             # Создаем данные для горизонтальной диаграммы
             file_names = [os.path.basename(file) for file, _ in top_files]
             file_paths = [file for file, _ in top_files]
@@ -1127,68 +1271,77 @@ def display_commit_analytics(commits, author_data):
             file_types = []
             for file in file_paths:
                 _, ext = os.path.splitext(file)
-                if ext in ['.py', '.java', '.js', '.ts', '.jsx', '.tsx']:
-                    file_types.append('Code')
-                elif ext in ['.html', '.css', '.scss', '.less']:
-                    file_types.append('UI')
-                elif ext in ['.json', '.yaml', '.yml', '.xml', '.toml']:
-                    file_types.append('Config')
-                elif ext in ['.md', '.txt', '.csv', '.rst']:
-                    file_types.append('Doc')
+                if ext in [".py", ".java", ".js", ".ts", ".jsx", ".tsx"]:
+                    file_types.append("Code")
+                elif ext in [".html", ".css", ".scss", ".less"]:
+                    file_types.append("UI")
+                elif ext in [".json", ".yaml", ".yml", ".xml", ".toml"]:
+                    file_types.append("Config")
+                elif ext in [".md", ".txt", ".csv", ".rst"]:
+                    file_types.append("Doc")
                 else:
-                    file_types.append('Other')
-            
+                    file_types.append("Other")
+
             # Отображаем диаграммы в двух колонках
             col1, col2 = st.columns(2)
             with col1:
                 if file_types_chart:
-                    st.plotly_chart(file_types_chart, use_container_width=True, config={"displayModeBar": False})
-            
+                    st.plotly_chart(
+                        file_types_chart,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                    )
+
             with col2:
                 # Создаем интерактивную горизонтальную гистограмму
                 fig = px.bar(
                     x=file_changes_values,
                     y=file_names,
                     color=file_types,
-                    orientation='h',
-                    labels={'x': 'Lines Changed', 'y': 'File'},
-                    title='Top Changed Files',
+                    orientation="h",
+                    labels={"x": "Lines Changed", "y": "File"},
+                    title="Top Changed Files",
                     color_discrete_sequence=ALFA_SEQUENTIAL,
-                    hover_data={'path': file_paths}
+                    hover_data={"path": file_paths},
                 )
                 # Настраиваем макет с меньшей высотой
                 fig.update_layout(
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font=dict(family="Arial, sans-serif", size=12, color=ALFA_BLACK),
                     height=520,  # Увеличиваем высоту с 350 до 450
                     margin=dict(l=10, r=10, t=50, b=10),
-                    yaxis={'categoryorder': 'total ascending'},
+                    yaxis={"categoryorder": "total ascending"},
                     legend=dict(
-                        title='File Type',
-                        orientation='h',
-                        yanchor='bottom',
+                        title="File Type",
+                        orientation="h",
+                        yanchor="bottom",
                         y=1.02,
-                        xanchor='right',
-                        x=1
-                    )
+                        xanchor="right",
+                        x=1,
+                    ),
                 )
                 # Настраиваем подсказки
                 fig.update_traces(
-                    hovertemplate='<b>%{y}</b><br>Changes: %{x}<br>Path: %{customdata[0]}<br>Type: %{marker.color}<extra></extra>'
+                    hovertemplate="<b>%{y}</b><br>Changes: %{x}<br>Path: %{customdata[0]}<br>Type: %{marker.color}<extra></extra>"
                 )
-                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-                
+                st.plotly_chart(
+                    fig, use_container_width=True, config={"displayModeBar": False}
+                )
+
     with viz_tabs[3]:
         # Анализ влияния коммитов
         st.markdown("### 🔍 Commit Impact Analysis")
-        
+
         # График влияния коммитов
         impact_chart = create_commit_impact_chart(df_commits)
-        st.plotly_chart(impact_chart, use_container_width=True, config={"displayModeBar": True})
-        
+        st.plotly_chart(
+            impact_chart, use_container_width=True, config={"displayModeBar": True}
+        )
+
         # Добавляем информацию о том, как интерпретировать
-        st.markdown("""
+        st.markdown(
+            """
         <div style="background-color: #F5F5F5; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
             <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
                 <div style="font-size: 1.2rem; margin-right: 10px;">ℹ️</div>
@@ -1199,84 +1352,90 @@ def display_commit_analytics(commits, author_data):
                                 Larger bubbles represent commits with higher overall impact on the codebase.
             </p>
         </div>
-        """, unsafe_allow_html=True)
-        
+        """,
+            unsafe_allow_html=True,
+        )
+
         # Анализ типов коммитов
         st.markdown("### 📊 Commit Types Distribution")
-        
+
         # Подсчитываем типы коммитов
-        commit_types = df_commits['commit_type'].value_counts().reset_index()
-        commit_types.columns = ['type', 'count']
-        
+        commit_types = df_commits["commit_type"].value_counts().reset_index()
+        commit_types.columns = ["type", "count"]
+
         # Добавляем описания типов коммитов
         type_descriptions = {
             "Addition": "New code or features added",
             "Major Addition": "Significant new code or features",
             "Modification": "Balanced changes to existing code",
             "Removal": "Code cleanup or feature removal",
-            "Major Removal": "Significant code removal or refactoring"
+            "Major Removal": "Significant code removal or refactoring",
         }
-        
-        commit_types['description'] = commit_types['type'].map(type_descriptions)
-        
+
+        commit_types["description"] = commit_types["type"].map(type_descriptions)
+
         # Создаем интерактивную визуализацию
         fig = px.pie(
             commit_types,
-            values='count',
-            names='type',
-            title='Commit Types Distribution',
-            color='type',
+            values="count",
+            names="type",
+            title="Commit Types Distribution",
+            color="type",
             color_discrete_map={
                 "Addition": "#4CAF50",
                 "Major Addition": "#2E7D32",
                 "Modification": "#FF9800",
                 "Removal": "#F44336",
-                "Major Removal": "#B71C1C"
+                "Major Removal": "#B71C1C",
             },
-            hover_data=['description', 'count'],
+            hover_data=["description", "count"],
         )
-        
+
         # Настраиваем макет
         fig.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Arial, sans-serif", size=12, color=ALFA_BLACK),
             margin=dict(l=10, r=10, t=50, b=10),
             legend=dict(
-                orientation='h',
-                yanchor='bottom',
-                y=-0.2,
-                xanchor='center',
-                x=0.5
-            )
+                orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
+            ),
         )
-        
+
         # Настраиваем подсказки
         fig.update_traces(
-            textinfo='percent+label',
-            hovertemplate='<b>%{label}</b><br>%{customdata[0]}<br>Count: %{customdata[1]} (%{percent})<extra></extra>'
+            textinfo="percent+label",
+            hovertemplate="<b>%{label}</b><br>%{customdata[0]}<br>Count: %{customdata[1]} (%{percent})<extra></extra>",
         )
-        
+
         col1, col2 = st.columns([3, 2])
         with col1:
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        
+            st.plotly_chart(
+                fig, use_container_width=True, config={"displayModeBar": False}
+            )
+
         with col2:
             # Добавляем объяснение типов коммитов
             st.markdown("<h4>Commit Type Definitions</h4>", unsafe_allow_html=True)
-            
+
             for commit_type, description in type_descriptions.items():
                 color = {
                     "Addition": "#4CAF50",
                     "Major Addition": "#2E7D32",
                     "Modification": "#FF9800",
                     "Removal": "#F44336",
-                    "Major Removal": "#B71C1C"
+                    "Major Removal": "#B71C1C",
                 }.get(commit_type, "#333333")
-                
-                count = commit_types[commit_types['type'] == commit_type]['count'].values[0] if commit_type in commit_types['type'].values else 0
-                percentage = (count / len(df_commits) * 100) if len(df_commits) > 0 else 0
-                
+
+                count = (
+                    commit_types[commit_types["type"] == commit_type]["count"].values[0]
+                    if commit_type in commit_types["type"].values
+                    else 0
+                )
+                percentage = (
+                    (count / len(df_commits) * 100) if len(df_commits) > 0 else 0
+                )
+
                 st.markdown(
                     f"""
                 <div style="display: flex; align-items: center; margin-bottom: 0.8rem; background-color: #F8F8F8; padding: 0.8rem; border-radius: 8px;">
@@ -1289,147 +1448,180 @@ def display_commit_analytics(commits, author_data):
                 """,
                     unsafe_allow_html=True,
                 )
-    
+
     with viz_tabs[4]:
         # Продвинутые метрики и анализ
         st.markdown("### 📈 Developer Productivity Metrics")
-        
+
         # Рассчитываем продвинутые метрики
         productivity_metrics = {}
-        
+
         # Средний размер коммита
-        productivity_metrics['avg_commit_size'] = df_commits['total_changes'].mean()
-        
+        productivity_metrics["avg_commit_size"] = df_commits["total_changes"].mean()
+
         # Среднее количество файлов на коммит
-        productivity_metrics['avg_files_per_commit'] = df_commits['files_changed'].mean()
-        
+        productivity_metrics["avg_files_per_commit"] = df_commits[
+            "files_changed"
+        ].mean()
+
         # Коэффициент качества (соотношение добавлений к общим изменениям)
-        productivity_metrics['quality_ratio'] = (df_commits['additions'].sum() / max(1, df_commits['total_changes'].sum())) * 100
-        
+        productivity_metrics["quality_ratio"] = (
+            df_commits["additions"].sum() / max(1, df_commits["total_changes"].sum())
+        ) * 100
+
         # Коэффициент сложности (средняя сложность коммитов)
-        productivity_metrics['complexity'] = df_commits['complexity'].mean()
-        
+        productivity_metrics["complexity"] = df_commits["complexity"].mean()
+
         # Частота коммитов (коммитов в день)
         if len(df_commits) > 0:
-            date_range = (df_commits['date'].max() - df_commits['date'].min()).days + 1
-            productivity_metrics['commit_frequency'] = len(df_commits) / max(1, date_range)
+            date_range = (df_commits["date"].max() - df_commits["date"].min()).days + 1
+            productivity_metrics["commit_frequency"] = len(df_commits) / max(
+                1, date_range
+            )
         else:
-            productivity_metrics['commit_frequency'] = 0
-            
+            productivity_metrics["commit_frequency"] = 0
+
         # Коэффициент изменения кода (соотношение изменений к количеству коммитов)
-        productivity_metrics['code_churn_ratio'] = df_commits['total_changes'].sum() / max(1, len(df_commits))
-        
+        productivity_metrics["code_churn_ratio"] = df_commits[
+            "total_changes"
+        ].sum() / max(1, len(df_commits))
+
         # Создаем радарный график продуктивности
-        categories = ['Commit Size', 'Files per Commit', 'Quality Ratio', 'Complexity', 'Commit Frequency', 'Code Churn']
-        
+        categories = [
+            "Commit Size",
+            "Files per Commit",
+            "Quality Ratio",
+            "Complexity",
+            "Commit Frequency",
+            "Code Churn",
+        ]
+
         # Нормализуем значения для радарного графика
         # Для некоторых метрик меньше значит лучше, для других - больше
         radar_values = [
-            min(100, productivity_metrics['avg_commit_size'] / 2),  # Меньше лучше, ограничиваем 100
-            min(100, productivity_metrics['avg_files_per_commit'] * 10),  # Меньше лучше, ограничиваем 100
-            productivity_metrics['quality_ratio'],  # Больше лучше (0-100)
-            min(100, productivity_metrics['complexity'] * 10),  # Меньше лучше, ограничиваем 100
-            min(100, productivity_metrics['commit_frequency'] * 20),  # Больше лучше, ограничиваем 100
-            min(100, productivity_metrics['code_churn_ratio'] / 5)  # Меньше лучше, ограничиваем 100
+            min(
+                100, productivity_metrics["avg_commit_size"] / 2
+            ),  # Меньше лучше, ограничиваем 100
+            min(
+                100, productivity_metrics["avg_files_per_commit"] * 10
+            ),  # Меньше лучше, ограничиваем 100
+            productivity_metrics["quality_ratio"],  # Больше лучше (0-100)
+            min(
+                100, productivity_metrics["complexity"] * 10
+            ),  # Меньше лучше, ограничиваем 100
+            min(
+                100, productivity_metrics["commit_frequency"] * 20
+            ),  # Больше лучше, ограничиваем 100
+            min(
+                100, productivity_metrics["code_churn_ratio"] / 5
+            ),  # Меньше лучше, ограничиваем 100
         ]
-        
+
         # Инвертируем значения для метрик, где меньше значит лучше
         radar_values[0] = 100 - radar_values[0]
         radar_values[1] = 100 - radar_values[1]
         radar_values[3] = 100 - radar_values[3]
         radar_values[5] = 100 - radar_values[5]
-        
+
         # Создаем радарный график
         fig = go.Figure()
-        
-        fig.add_trace(go.Scatterpolar(
-            r=radar_values,
-            theta=categories,
-            fill='toself',
-            name='Developer Metrics',
-            line=dict(color=ALFA_RED),
-            fillcolor=f'rgba({int(ALFA_RED[1:3], 16)}, {int(ALFA_RED[3:5], 16)}, {int(ALFA_RED[5:7], 16)}, 0.2)',
-        ))
-        
+
+        fig.add_trace(
+            go.Scatterpolar(
+                r=radar_values,
+                theta=categories,
+                fill="toself",
+                name="Developer Metrics",
+                line=dict(color=ALFA_RED),
+                fillcolor=f"rgba({int(ALFA_RED[1:3], 16)}, {int(ALFA_RED[3:5], 16)}, {int(ALFA_RED[5:7], 16)}, 0.2)",
+            )
+        )
+
         # Добавляем эталонные значения
-        fig.add_trace(go.Scatterpolar(
-            r=[70, 70, 70, 70, 70, 70],  # Эталонные значения
-            theta=categories,
-            fill='toself',
-            name='Reference',
-            line=dict(color='#333333', dash='dot'),
-            fillcolor='rgba(200, 200, 200, 0.2)',
-        ))
-        
+        fig.add_trace(
+            go.Scatterpolar(
+                r=[70, 70, 70, 70, 70, 70],  # Эталонные значения
+                theta=categories,
+                fill="toself",
+                name="Reference",
+                line=dict(color="#333333", dash="dot"),
+                fillcolor="rgba(200, 200, 200, 0.2)",
+            )
+        )
+
         # Настраиваем макет
         fig.update_layout(
             polar=dict(
-                radialaxis=dict(
-                    visible=True,
-                    range=[0, 100]
-                ),
+                radialaxis=dict(visible=True, range=[0, 100]),
                 angularaxis=dict(
                     rotation=90,  # Начинаем с верхней точки
-                    direction='clockwise'  # Направление по часовой стрелке
-                )
+                    direction="clockwise",  # Направление по часовой стрелке
+                ),
             ),
-            title='Developer Performance Radar',
+            title="Developer Performance Radar",
             showlegend=True,
             legend=dict(
-                orientation='h',
-                yanchor='bottom',
+                orientation="h",
+                yanchor="bottom",
                 y=-0.15,  # Смещаем легенду ниже
-                xanchor='center',
-                x=0.5
+                xanchor="center",
+                x=0.5,
             ),
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Arial, sans-serif", size=12, color=ALFA_BLACK),
             margin=dict(l=80, r=80, t=50, b=80),  # Увеличиваем нижний отступ
             height=550,  # Увеличиваем высоту еще больше
         )
-        
+
         col1, col2 = st.columns([3, 2])
         with col1:
-            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-        
+            st.plotly_chart(
+                fig, use_container_width=True, config={"displayModeBar": False}
+            )
+
         with col2:
             # Добавляем объяснение метрик
-            st.markdown("<h4>Productivity Metrics Explained</h4>", unsafe_allow_html=True)
-            
+            st.markdown(
+                "<h4>Productivity Metrics Explained</h4>", unsafe_allow_html=True
+            )
+
             metrics_explanation = {
                 "Commit Size": {
                     "value": f"{productivity_metrics['avg_commit_size']:.1f} lines",
                     "description": "Average number of lines changed per commit. Smaller, focused commits are generally better.",
-                    "score": 100 - min(100, productivity_metrics['avg_commit_size'] / 2)
+                    "score": 100
+                    - min(100, productivity_metrics["avg_commit_size"] / 2),
                 },
                 "Files per Commit": {
                     "value": f"{productivity_metrics['avg_files_per_commit']:.1f} files",
                     "description": "Average number of files changed in each commit. Lower values indicate more focused changes.",
-                    "score": 100 - min(100, productivity_metrics['avg_files_per_commit'] * 10)
+                    "score": 100
+                    - min(100, productivity_metrics["avg_files_per_commit"] * 10),
                 },
                 "Quality Ratio": {
                     "value": f"{productivity_metrics['quality_ratio']:.1f}%",
                     "description": "Percentage of additions relative to total changes. Higher values suggest more new code vs. rewrites.",
-                    "score": productivity_metrics['quality_ratio']
+                    "score": productivity_metrics["quality_ratio"],
                 },
                 "Complexity": {
                     "value": f"{productivity_metrics['complexity']:.2f}",
                     "description": "Average complexity of commits based on lines changed per file. Lower is better.",
-                    "score": 100 - min(100, productivity_metrics['complexity'] * 10)
+                    "score": 100 - min(100, productivity_metrics["complexity"] * 10),
                 },
                 "Commit Frequency": {
                     "value": f"{productivity_metrics['commit_frequency']:.2f} per day",
                     "description": "Average number of commits per day. Higher values indicate more regular contributions.",
-                    "score": min(100, productivity_metrics['commit_frequency'] * 20)
+                    "score": min(100, productivity_metrics["commit_frequency"] * 20),
                 },
                 "Code Churn": {
                     "value": f"{productivity_metrics['code_churn_ratio']:.1f} lines/commit",
                     "description": "Rate of code changes relative to commit count. Lower values suggest more efficient changes.",
-                    "score": 100 - min(100, productivity_metrics['code_churn_ratio'] / 5)
-                }
+                    "score": 100
+                    - min(100, productivity_metrics["code_churn_ratio"] / 5),
+                },
             }
-            
+
             for metric, data in metrics_explanation.items():
                 # Определяем цвет на основе оценки
                 if data["score"] >= 70:
@@ -1438,7 +1630,7 @@ def display_commit_analytics(commits, author_data):
                     color = "#FF9800"  # Оранжевый для средних оценок
                 else:
                     color = "#F44336"  # Красный для низких оценок
-                
+
                 st.markdown(
                     f"""
                 <div style="margin-bottom: 0.8rem; background-color: #F8F8F8; padding: 0.8rem; border-radius: 8px;">
@@ -1455,128 +1647,154 @@ def display_commit_analytics(commits, author_data):
                 """,
                     unsafe_allow_html=True,
                 )
-        
+
         # Добавляем анализ трендов
         st.markdown("### 📊 Trend Analysis")
-        
+
         # Подготавливаем данные для анализа трендов
-        trend_data = df_commits.sort_values('datetime').copy()
-        
+        trend_data = df_commits.sort_values("datetime").copy()
+
         # Добавляем скользящие средние и другие метрики трендов
         window_size = max(1, len(trend_data) // 10)  # Адаптивный размер окна
-        
+
         # Добавляем скользящие средние для различных метрик
-        trend_data['additions_ma'] = trend_data['additions'].rolling(window=window_size, min_periods=1).mean()
-        trend_data['deletions_ma'] = trend_data['deletions'].rolling(window=window_size, min_periods=1).mean()
-        trend_data['complexity_ma'] = trend_data['complexity'].rolling(window=window_size, min_periods=1).mean()
-        trend_data['files_ma'] = trend_data['files_changed'].rolling(window=window_size, min_periods=1).mean()
-        
+        trend_data["additions_ma"] = (
+            trend_data["additions"].rolling(window=window_size, min_periods=1).mean()
+        )
+        trend_data["deletions_ma"] = (
+            trend_data["deletions"].rolling(window=window_size, min_periods=1).mean()
+        )
+        trend_data["complexity_ma"] = (
+            trend_data["complexity"].rolling(window=window_size, min_periods=1).mean()
+        )
+        trend_data["files_ma"] = (
+            trend_data["files_changed"]
+            .rolling(window=window_size, min_periods=1)
+            .mean()
+        )
+
         # Создаем интерактивный график трендов без анимации
         fig = make_subplots(
-            rows=2, cols=2,
-            subplot_titles=("Code Changes Trend", "Complexity Trend", "Files Changed Trend", "Commit Size Distribution"),
+            rows=2,
+            cols=2,
+            subplot_titles=(
+                "Code Changes Trend",
+                "Complexity Trend",
+                "Files Changed Trend",
+                "Commit Size Distribution",
+            ),
             shared_xaxes=True,
             vertical_spacing=0.1,
-            horizontal_spacing=0.1
+            horizontal_spacing=0.1,
         )
-        
+
         # 1. Тренд изменений кода
         fig.add_trace(
             go.Scatter(
-                x=trend_data['datetime'],
-                y=trend_data['additions_ma'],
-                mode='lines',
-                name='Additions Trend',
-                line=dict(color='#4CAF50', width=2),
+                x=trend_data["datetime"],
+                y=trend_data["additions_ma"],
+                mode="lines",
+                name="Additions Trend",
+                line=dict(color="#4CAF50", width=2),
             ),
-            row=1, col=1
+            row=1,
+            col=1,
         )
-        
+
         fig.add_trace(
             go.Scatter(
-                x=trend_data['datetime'],
-                y=trend_data['deletions_ma'],
-                mode='lines',
-                name='Deletions Trend',
+                x=trend_data["datetime"],
+                y=trend_data["deletions_ma"],
+                mode="lines",
+                name="Deletions Trend",
                 line=dict(color=ALFA_RED, width=2),
             ),
-            row=1, col=1
+            row=1,
+            col=1,
         )
-        
+
         # 2. Тренд сложности
         fig.add_trace(
             go.Scatter(
-                x=trend_data['datetime'],
-                y=trend_data['complexity_ma'],
-                mode='lines',
-                name='Complexity Trend',
-                line=dict(color='#FF9800', width=2),
-                fill='tozeroy',
-                fillcolor='rgba(255, 152, 0, 0.2)',
+                x=trend_data["datetime"],
+                y=trend_data["complexity_ma"],
+                mode="lines",
+                name="Complexity Trend",
+                line=dict(color="#FF9800", width=2),
+                fill="tozeroy",
+                fillcolor="rgba(255, 152, 0, 0.2)",
             ),
-            row=1, col=2
+            row=1,
+            col=2,
         )
-        
+
         # 3. Тренд количества файлов
         fig.add_trace(
             go.Scatter(
-                x=trend_data['datetime'],
-                y=trend_data['files_ma'],
-                mode='lines',
-                name='Files Trend',
-                line=dict(color='#2196F3', width=2),
-                fill='tozeroy',
-                fillcolor='rgba(33, 150, 243, 0.2)',
+                x=trend_data["datetime"],
+                y=trend_data["files_ma"],
+                mode="lines",
+                name="Files Trend",
+                line=dict(color="#2196F3", width=2),
+                fill="tozeroy",
+                fillcolor="rgba(33, 150, 243, 0.2)",
             ),
-            row=2, col=1
+            row=2,
+            col=1,
         )
-        
+
         # 4. Распределение размеров коммитов
         fig.add_trace(
             go.Histogram(
-                x=trend_data['total_changes'],
-                name='Commit Size',
-                                marker=dict(color=ALFA_RED),
+                x=trend_data["total_changes"],
+                name="Commit Size",
+                marker=dict(color=ALFA_RED),
                 nbinsx=20,
-                histnorm='probability',
+                histnorm="probability",
             ),
-            row=2, col=2
+            row=2,
+            col=2,
         )
-        
+
         # Настраиваем макет
         fig.update_layout(
-            title='Developer Activity Trends',
+            title="Developer Activity Trends",
             showlegend=True,
             legend=dict(
-                orientation='h',
-                yanchor='bottom',
-                y=-0.2,
-                xanchor='center',
-                x=0.5
+                orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
             ),
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family='Arial, sans-serif', size=12, color=ALFA_BLACK),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Arial, sans-serif", size=12, color=ALFA_BLACK),
             margin=dict(l=10, r=10, t=80, b=50),
             height=600,
         )
-        
+
         # Настраиваем оси
         for i in range(1, 3):
             for j in range(1, 3):
                 fig.update_xaxes(
-                    showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-                    row=i, col=j
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor=ALFA_LIGHT_GRAY,
+                    zeroline=False,
+                    row=i,
+                    col=j,
                 )
                 fig.update_yaxes(
-                    showgrid=True, gridwidth=1, gridcolor=ALFA_LIGHT_GRAY, zeroline=False,
-                    row=i, col=j
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor=ALFA_LIGHT_GRAY,
+                    zeroline=False,
+                    row=i,
+                    col=j,
                 )
-        
+
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": True})
-        
+
         # Добавляем выводы и рекомендации
-        st.markdown("""
+        st.markdown(
+            """
         <div style="background-color: #F5F5F5; padding: 1.2rem; border-radius: 8px; margin-top: 1.5rem;">
             <h4 style="margin-top: 0;">Summary and Recommendations</h4>
             <p style="color: #666;">
@@ -1589,14 +1807,16 @@ def display_commit_analytics(commits, author_data):
                 <li><strong>File Organization:</strong> Pay attention to which file types see the most changes, as this can indicate areas that might benefit from refactoring.</li>
             </ul>
         </div>
-        """, unsafe_allow_html=True)
-    
+        """,
+            unsafe_allow_html=True,
+        )
+
     # Добавляем интерактивную таблицу с коммитами
     st.markdown("### 📋 Recent Commits")
-    
+
     # Получаем последние коммиты
     recent_commits = df_commits.sort_values("datetime", ascending=False).head(10)
-    
+
     # Создаем красивую таблицу коммитов с экспандерами для LLM анализа и интерактивными элементами
     for i, row in recent_commits.iterrows():
         commit_date = row["date"]
@@ -1606,24 +1826,24 @@ def display_commit_analytics(commits, author_data):
         commit_sha = row["sha"]
         commit_type = row["commit_type"]
         llm_summary = row.get("llm_summary", "")
-        
+
         # Определяем цвет для типа коммита
         type_colors = {
             "Addition": "#4CAF50",
             "Major Addition": "#2E7D32",
             "Modification": "#FF9800",
             "Removal": "#F44336",
-            "Major Removal": "#B71C1C"
+            "Major Removal": "#B71C1C",
         }
         type_color = type_colors.get(commit_type, "#333333")
-        
+
         # Ограничиваем длину сообщения
         if len(commit_msg) > 70:
             commit_msg = commit_msg[:67] + "..."
-        
+
         # Создаем карточку коммита с индикатором наличия LLM анализа
         has_llm = "🤖 " if llm_summary else ""
-        
+
         st.markdown(
             f"""
         <div class="commit-card" style="display: flex; padding: 15px; border-radius: 10px; background-color: {ALFA_GRAY}; margin-bottom: 10px; align-items: center; border-left: 4px solid {type_color};">
@@ -1642,20 +1862,20 @@ def display_commit_analytics(commits, author_data):
         """,
             unsafe_allow_html=True,
         )
-        
+
         # Если есть LLM анализ, показываем его в экспандере с улучшенным форматированием
         if llm_summary:
             with st.expander("🤖 View AI Analysis"):
                 # Добавляем заголовок отдельно
                 st.markdown("## AI Code Analysis")
-                
+
                 # Отображаем анализ LLM как обычный Markdown
                 st.markdown(llm_summary)
-        
+
         # Добавляем разделитель для лучшей читаемости
         if i < len(recent_commits) - 1:
             st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
-    
+
     # Добавляем футер с информацией и кнопками
     st.markdown(
         """
