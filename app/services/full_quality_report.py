@@ -1,6 +1,7 @@
 from app.models.llm_service import ask_yandex_gpt
 from datetime import datetime
 
+
 def generate_full_quality_report(commits: list) -> str:
     """
     Генерирует единый LLM-отчет на основе всех `llm_summary` из коммитов.
@@ -20,8 +21,12 @@ def generate_full_quality_report(commits: list) -> str:
 
     combined_diff_summary = "\n\n".join(summaries)
     try:
-        date_from = datetime.strptime(str(commits[-1].get("date")), "%Y-%m-%d %H:%M:%S%z").date()
-        date_to = datetime.strptime(str(commits[0].get("date")), "%Y-%m-%d %H:%M:%S%z").date()
+        date_from = datetime.strptime(
+            str(commits[-1].get("date")), "%Y-%m-%d %H:%M:%S%z"
+        ).date()
+        date_to = datetime.strptime(
+            str(commits[0].get("date")), "%Y-%m-%d %H:%M:%S%z"
+        ).date()
     except Exception:
         # fallback: если формат неожиданен
         date_from = commits[-1].get("date", "")[:10]
@@ -79,8 +84,8 @@ def get_pdf_download_link(markdown_content, filename, link_text):
     import base64, io, os, traceback
 
     try:
-        font_path = os.path.join('fonts', 'DejaVuSans.ttf')
-        font_name = 'DejaVuSans'
+        font_path = os.path.join("fonts", "DejaVuSans.ttf")
+        font_name = "DejaVuSans"
         pdfmetrics.registerFont(TTFont(font_name, font_path))
 
         pdf_bytes = io.BytesIO()
@@ -142,12 +147,12 @@ def get_pdf_download_link(markdown_content, filename, link_text):
         pdf_bytes.seek(0)
 
         b64 = base64.b64encode(pdf_bytes.read()).decode()
-        href = f'''
+        href = f"""
         <a href="data:application/pdf;base64,{b64}" download="{filename}" 
            style="text-decoration: none; color: #EF3124; font-weight: 500; 
            display: inline-flex; align-items: center; margin-top: 1rem;">
            <span style="margin-right: 5px;">📥</span> {link_text}</a>
-        '''
+        """
         return href
 
     except Exception:
