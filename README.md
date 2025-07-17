@@ -1,4 +1,4 @@
-# Code quality reported | LLM Coding Challenge & Кейс АльфаСтрахование
+# Code quality reporter | LLM Coding Challenge & Кейс АльфаСтрахование
 
 ### Обзор проекта
 Code Quality Reporter – это AI-ассистент для анализа качества кода разработчиков на основе их прошлых коммитов в GitHub репозиториях.
